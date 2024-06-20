@@ -1,1 +1,2 @@
-# DeepGAT_CANDAR
+# DeepGAT
+python scripts for my academic research
