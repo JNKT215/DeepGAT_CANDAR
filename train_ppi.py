@@ -2,7 +2,7 @@ import torch
 from sklearn.metrics import f1_score
 from torch_geometric.datasets import PPI
 from torch_geometric.loader import DataLoader
-from model import DeepGAT,GAT
+from model import return_model,Loss_func
 import hydra
 from hydra import utils
 from tqdm import tqdm
@@ -20,27 +20,18 @@ def get_train_h(train_loader,model,device):
 
 def train(loader,model,optimizer,device):
     model.train()
-    loss_op = torch.nn.BCEWithLogitsLoss()
+    loss_func = Loss_func(model.cfg)
     total_loss = 0
-    if model.cfg['layer_loss'] == 'supervised':
-        for data in loader:  # in [g1, g2, ..., g20]
-            data = data.to(device)
-            optimizer.zero_grad()
-            out,hs,_ = model(data.x, data.edge_index)
-            loss = loss_op(out, data.y)
-            loss +=get_y_preds_loss(hs,data,loss_op)
-            total_loss += loss.item() * data.num_graphs
-            loss.backward()
-            optimizer.step()
-    else:
-        for data in loader:  # in [g1, g2, ..., g20]
-            data = data.to(device)
-            optimizer.zero_grad()
-            out,_,_ = model(data.x, data.edge_index)
-            loss = loss_op(out, data.y)
-            total_loss += loss.item() * data.num_graphs
-            loss.backward()
-            optimizer.step()
+                
+    for data in loader:
+        data = data.to(device)
+        optimizer.zero_grad()
+        out,hs,_ = model(data.x, data.edge_index)
+        loss = loss_func(out=out,y=data.y,hs=hs)
+        total_loss += loss.item() * data.num_graphs
+        loss.backward()
+        optimizer.step()
+            
     return total_loss / len(loader.dataset)
 
 
@@ -58,13 +49,6 @@ def test(loader,model,device):
 
     y, pred = torch.cat(ys, dim=0).numpy(), torch.cat(preds, dim=0).numpy()
     return f1_score(y, pred, average='micro') if pred.sum() > 0 else 0, attentions[0],hs[0]
-
-def get_y_preds_loss(hs,data,loss_op):
-    y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
-    for h in hs:
-        h = h.mean(dim=1)
-        y_pred_loss += loss_op(h,data.y)
-    return y_pred_loss
 
 def run(loader,model,optimizer,device,cfg):
 
@@ -86,7 +70,7 @@ def main(cfg):
     torch.cuda.empty_cache()
     print(utils.get_original_cwd())
     mlflow.set_tracking_uri('http://127.0.0.1:5000')
-    mlflow.set_experiment("output")
+    mlflow.set_experiment(cfg.experiment_name)
     mlflow.start_run()
 
     cfg = cfg[cfg.key]
@@ -113,10 +97,7 @@ def main(cfg):
     artifacts[f"{cfg['dataset']}_test_x.npy"] = test_xs[0] 
     for i in tqdm(range(cfg['run'])):
         set_seed(i)
-        if cfg['mode'] == 'original':
-            model = GAT(cfg).to(device)
-        else:
-            model = DeepGAT(cfg).to(device)
+        model = return_model(cfg).to(device)
              
         optimizer = torch.optim.Adam(model.parameters(), lr=cfg['learing_late'])
         test_acc,epoch,attention,test_h,train_h = run(loader,model,optimizer,device,cfg)

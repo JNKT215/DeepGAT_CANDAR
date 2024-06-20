@@ -66,3 +66,8 @@ def log_artifacts(artifacts,output_path=None):
                     os.makedirs(output_path, exist_ok=True)
                 np.save(artifact_name, artifact.to('cpu').detach().numpy().copy())
                 mlflow.log_artifact(artifact_name)
+                
+def accuracy(out,data,mask):
+    mask = data[mask]
+    acc = float((out[mask].argmax(-1) == data.y[mask]).sum() / mask.sum())
+    return acc

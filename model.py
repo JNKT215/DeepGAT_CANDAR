@@ -196,3 +196,52 @@ class GAT(nn.Module):
             v_att_l.append(att_neighbors.to('cpu').detach().numpy().copy())
 
         return v_att_l
+
+
+class Loss_func(nn.Module):
+    def __init__(self,cfg): # パラメータの設定など初期化処理を行う
+        super().__init__()
+        self.cfg = cfg
+        self.loss_op = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self,out,y,mask=None,hs=[]): # モデルの出力と正解データ
+        if self.cfg['task'] == 'Transductive':
+            out_softmax = F.log_softmax(out,dim=-1)
+            loss = F.nll_loss(out_softmax[mask],y[mask])
+            if self.cfg['mode'] == "DeepGAT":
+                loss += self.get_y_preds_loss(hs,y,mask)
+                
+        elif self.cfg['task'] == 'Inductive':
+            loss = self.loss_op(out,y)
+            if self.cfg['mode'] == "DeepGAT":
+                loss += self.get_y_preds_loss_ppi(hs,y)
+                
+        return loss
+    
+    
+    def get_y_preds_loss(self,hs,y,mask):
+        y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
+        for h in hs:
+            h = h.mean(dim=1)
+            y_pred = F.log_softmax(h, dim=-1)
+            y_pred_loss += F.nll_loss(y_pred[mask],y[mask])
+
+        return y_pred_loss
+
+    def get_y_preds_loss_ppi(self,hs,y):
+        y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
+        for h in hs:
+            h = h.mean(dim=1)
+            y_pred_loss += self.loss_op(h,y)
+        return y_pred_loss
+    
+    
+def return_model(cfg,data=None):
+    if cfg['model'] == 'GAT':
+            model = GAT(cfg)
+    elif cfg['model'] == 'DeepGAT':
+        model = DeepGAT(cfg)
+        if cfg['oracle_attention']:
+            model.set_oracle_attention(data.edge_index,data.y)
+    
+    return model

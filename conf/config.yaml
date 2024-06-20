@@ -1,4 +1,5 @@
 key: debag
+experiment_name: debag
 
 # -------datasets (Coauthor)-------
 Coauthor: &Coauthor
@@ -58,12 +59,11 @@ GAT: &GAT
   seed: 42
   epochs: 10000
   patience: 100
-  mode: original
+  model: GAT
   num_layer: 2
   class_num: Single
   att_type: DP
   norm: None 
-  layer_loss: unsupervised
   oracle_attention: False
 
 # -------model instance + dataset-------
@@ -97,9 +97,8 @@ GAT_cs_tuned_DP: &GAT_cs_tuned_DP
  <<: [*CS,*GAT]
  att_type: DP
  dropout: 0.8
- layer_loss: unsupervised
  learing_late:  0.005
- mode: original
+ model: GAT
  n_hid: 8
  norm: LayerNorm
  weight_decay: 0.001
@@ -109,9 +108,8 @@ GAT_cs_tuned_SD: &GAT_cs_tuned_SD
  <<: [*CS,*GAT]
  att_type: SD
  dropout: 0.8
- layer_loss: unsupervised
  learing_late:  0.005
- mode: original
+ model: GAT
  n_hid: 8
  norm: LayerNorm
  weight_decay: 0.0005
@@ -121,9 +119,8 @@ GAT_physics_tuned_DP: &GAT_physics_tuned_DP
  <<: [*Physics,*GAT]
  att_type: DP
  dropout: 0.8
- layer_loss: unsupervised
  learing_late: 0.005
- mode: original
+ model: GAT
  n_hid: 8
  norm: LayerNorm
  weight_decay: 0.001
@@ -133,9 +130,8 @@ GAT_physics_tuned_SD: &GAT_physics_tuned_SD
  <<: [*Physics,*GAT]
  att_type: SD
  dropout: 0.6
- layer_loss: unsupervised
  learing_late: 0.05
- mode: original
+ model: GAT
  n_hid: 8
  norm: LayerNorm
  weight_decay: 0.001
@@ -147,7 +143,7 @@ GAT_Flickr_tuned_DP: &GAT_Flickr_tuned_DP
   att_type: DP
   dropout: 0.0
   learing_late:  0.01
-  mode: original 
+  model: GAT 
   n_hid: 8
   norm: BatchNorm1d
   weight_decay: 0.001
@@ -158,7 +154,7 @@ GAT_Flickr_tuned_SD: &GAT_Flickr_tuned_SD
   att_type: SD
   dropout: 0.0
   learing_late: 0.005
-  mode: original 
+  model: GAT 
   n_hid: 8
   norm: BatchNorm1d
   weight_decay: 0.001
@@ -170,9 +166,8 @@ GAT_ppi_tuned_DP: &GAT_ppi_tuned_DP
  n_head_last: 6
  att_type: DP
  dropout: 0.2
- layer_loss: unsupervised
  learing_late: 0.001
- mode: original
+ model: GAT
  n_hid: 128
  norm: LayerNorm
  weight_decay: 0.001
@@ -185,9 +180,8 @@ GAT_ppi_tuned_SD: &GAT_ppi_tuned_SD
  n_head_last: 6
  att_type: SD
  dropout: 0.8
- layer_loss: unsupervised
  learing_late: 0.001 
- mode: original
+ model: GAT
  n_hid: 128
  norm: BatchNorm1d
  weight_decay: 0
@@ -198,25 +192,23 @@ GAT_ppi_tuned_SD: &GAT_ppi_tuned_SD
 # DeepGAT updated Tuned hyper parameters
 
 #cs
-GAT_cs_tuned_YDP_supervised_updated: &GAT_cs_tuned_YDP_supervised_updated
+DeepGAT_cs_tuned_YDP_supervised_updated: &GAT_cs_tuned_YDP_supervised_updated
  <<: [*CS,*GAT]
  att_type: YDP
  dropout: 0.8
- layer_loss: supervised
  learing_late: 0.05
- mode: normal
+ model: DeepGAT
  n_hid: 15
  norm: LayerNorm
  weight_decay: 0.0001
  path: cs_checkpoint.pt
 
-GAT_cs_tuned_YSD_supervised_updated: &GAT_cs_tuned_YSD_supervised_updated
+DeepGAT_cs_tuned_YSD_supervised_updated: &GAT_cs_tuned_YSD_supervised_updated
  <<: [*CS,*GAT]
  att_type: YSD
  dropout: 0.8
- layer_loss: supervised
  learing_late: 0.05
- mode: normal
+ model: DeepGAT
  n_hid: 15
  norm: LayerNorm
  weight_decay: 0.0005
@@ -224,80 +216,74 @@ GAT_cs_tuned_YSD_supervised_updated: &GAT_cs_tuned_YSD_supervised_updated
 
 
 #physics
-GAT_physics_tuned_YDP_supervised_updated: &GAT_physics_tuned_YDP_supervised_updated
+DeepGAT_physics_tuned_YDP_supervised_updated: &GAT_physics_tuned_YDP_supervised_updated
  <<: [*Physics,*GAT]
  att_type: YDP
  dropout: 0.8
- layer_loss: supervised
  learing_late: 0.05
- mode: normal
+ model: DeepGAT
  n_hid: 5
  norm:  LayerNorm
  weight_decay: 0
  path: physics_checkpoint.pt
 
-GAT_physics_tuned_YSD_supervised_updated: &GAT_physics_tuned_YSD_supervised_updated
+DeepGAT_physics_tuned_YSD_supervised_updated: &GAT_physics_tuned_YSD_supervised_updated
  <<: [*Physics,*GAT]
  att_type: YSD
  dropout:  0.6
- layer_loss: supervised
  learing_late: 0.001
- mode: normal
+ model: DeepGAT
  n_hid: 5
  norm: None
  weight_decay:  0
  path: physics_checkpoint.pt
 
 #Flickr
-GAT_Flickr_tuned_YDP_supervised_updated: &GAT_Flickr_tuned_YDP_supervised_updated
+DeepGAT_Flickr_tuned_YDP_supervised_updated: &GAT_Flickr_tuned_YDP_supervised_updated
  <<: [*Flickr,*GAT]
  att_type: YDP
  dropout: 0.0
- layer_loss: supervised
  learing_late: 0.01
- mode: normal
+ model: DeepGAT
  n_hid: 7
  norm: BatchNorm1d
  weight_decay: 0
  path: flickr_checkpoint.pt
   
-GAT_Flickr_tuned_YSD_supervised_updated: &GAT_Flickr_tuned_YSD_supervised_updated
+DeepGAT_Flickr_tuned_YSD_supervised_updated: &GAT_Flickr_tuned_YSD_supervised_updated
  <<: [*Flickr,*GAT]
  att_type: YSD
  dropout: 0.0
- layer_loss: supervised
  learing_late: 0.005
- mode: normal
+ model: DeepGAT
  n_hid: 7
  norm: BatchNorm1d
  weight_decay: 0
  path: flickr_checkpoint.pt
 
 #ppi
-GAT_ppi_tuned_YDP_supervised_updated: &GAT_ppi_tuned_YDP_supervised_updated
+DeepGAT_ppi_tuned_YDP_supervised_updated: &GAT_ppi_tuned_YDP_supervised_updated
  <<: [*PPI,*GAT]
  n_head: 4
  n_head_last: 6
  att_type: YDP
  dropout: 0.8
- layer_loss: supervised
  learing_late: 0.001  
- mode: normal
+ model: DeepGAT
  n_hid: 121
  norm: None
  weight_decay: 0
  class_num: Multi
  path: ppi_checkpoint.pt
 
-GAT_ppi_tuned_YSD_supervised_updated: &GAT_ppi_tuned_YSD_supervised_updated
+DeepGAT_ppi_tuned_YSD_supervised_updated: &GAT_ppi_tuned_YSD_supervised_updated
  <<: [*PPI,*GAT]
  n_head: 4
  n_head_last: 6
  att_type: YSD
  dropout: 0.2
- layer_loss: supervised
  learing_late: 0.001  
- mode: normal
+ model: DeepGAT
  n_hid: 121
  norm: LayerNorm
  weight_decay: 0.001
@@ -307,7 +293,7 @@ GAT_ppi_tuned_YSD_supervised_updated: &GAT_ppi_tuned_YSD_supervised_updated
 
 #debag
 debag:
- <<: *GAT_physics_tuned_YDP_supervised_updated
+ <<: *DeepGAT_physics_tuned_YDP_supervised_updated
  oracle_attention: True
  num_layer: 2
  run: 1

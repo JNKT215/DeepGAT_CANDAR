@@ -1,22 +1,20 @@
 import torch
 import torch.nn.functional as F
 from torch_geometric.datasets import Flickr
-from model import DeepGAT,GAT
+from model import return_model,Loss_func
 import hydra
 from hydra import utils
 from tqdm import tqdm
 import mlflow
-from utils import EarlyStopping,set_seed,log_artifacts
+from utils import EarlyStopping,set_seed,log_artifacts,accuracy
 
 def train(data, model, optimizer):
     model.train()
+    loss_func = Loss_func(model.cfg)
     optimizer.zero_grad()
     
     out_train,hs,_ = model(data.x, data.edge_index)
-    out_train_softmax =  F.log_softmax(out_train, dim=-1)
-    loss_train  = F.nll_loss(out_train_softmax[data.train_mask], data.y[data.train_mask])
-    if model.cfg['layer_loss'] == 'supervised':
-        loss_train += get_y_preds_loss(hs,data)
+    loss_train = loss_func(out_train,data.y,data.train_mask,hs)
     loss_train.backward()
     optimizer.step()
 
@@ -38,21 +36,6 @@ def test(data,model):
     attention = model.get_v_attention(data.edge_index,data.x.size(0),attention)
     return acc,attention,out
 
-def accuracy(out,data,mask):
-    mask = data[mask]
-    acc = float((out[mask].argmax(-1) == data.y[mask]).sum() / mask.sum())
-    return acc
-
-def get_y_preds_loss(hs,data):
-    y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
-    for h in hs:
-        h = h.mean(dim=1)
-        y_pred = F.log_softmax(h, dim=-1)
-        y_pred_loss += F.nll_loss(y_pred[data.train_mask], data.y[data.train_mask])
-
-    return y_pred_loss
-
-
 def run(data,model,optimizer,cfg):
 
     early_stopping = EarlyStopping(cfg['patience'],path=cfg['path'])
@@ -72,7 +55,7 @@ def main(cfg):
 
     print(utils.get_original_cwd())
     mlflow.set_tracking_uri('http://127.0.0.1:5000')
-    mlflow.set_experiment("output")
+    mlflow.set_experiment(cfg.experiment_name)
     mlflow.start_run()
     
     cfg = cfg[cfg.key]
@@ -93,12 +76,7 @@ def main(cfg):
     artifacts[f"{cfg['dataset']}_supervised_index.npy"] = torch.cat((train_index,val_index),dim=0)
     for i in tqdm(range(cfg['run'])):
         set_seed(i)
-        if cfg['mode'] == 'original':
-            model = GAT(cfg).to(device)
-        else:
-            model = DeepGAT(cfg).to(device)
-            if cfg['oracle_attention']:
-                model.set_oracle_attention(data.edge_index,data.y)
+        model = return_model(cfg,data).to(device)
             
         optimizer = torch.optim.Adam(params=model.parameters(), lr=cfg["learing_late"],weight_decay=cfg['weight_decay'])
         test_acc,epoch,attention,h = run(data,model,optimizer,cfg)
