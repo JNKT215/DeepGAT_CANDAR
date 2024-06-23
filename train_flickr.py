@@ -6,21 +6,26 @@ import hydra
 from hydra import utils
 from tqdm import tqdm
 import mlflow
-from utils import EarlyStopping,set_seed,log_artifacts,accuracy
+from utils import EarlyStopping,set_seed,log_artifacts,accuracy,set_label_features,intermediate_result_print
 
 def train(data, model, optimizer):
     model.train()
-    loss_func = Loss_func(model.cfg)
+    loss_func = Loss_func(cfg=model.cfg)
     optimizer.zero_grad()
-    
-    out_train,hs,_ = model(data.x, data.edge_index)
+    if model.cfg["label_feat"]:
+        out_train,hs,_ = model(data.x, data.edge_index, data.y_feat)
+    else:
+        out_train,hs,_ = model(data.x, data.edge_index)
     loss_train = loss_func(out_train,data.y,data.train_mask,hs)
     loss_train.backward()
     optimizer.step()
 
     # validation
     model.eval()
-    out_val,_,_ = model(data.x, data.edge_index)
+    if model.cfg["label_feat"]:
+        out_val,_,_ = model(data.x, data.edge_index, data.y_feat)
+    else:
+        out_val,_,_ = model(data.x, data.edge_index)
     out_val_softmax = F.log_softmax(out_val, dim=-1)
     loss_val = F.nll_loss(out_val_softmax[data.val_mask], data.y[data.val_mask])
 
@@ -30,7 +35,10 @@ def train(data, model, optimizer):
 @torch.no_grad()
 def test(data,model):
     model.eval()
-    out,_,attention = model(data.x, data.edge_index)
+    if model.cfg["label_feat"]:
+        out,_,attention = model(data.x, data.edge_index, data.y_feat)
+    else:
+        out,_,attention = model(data.x, data.edge_index)
     out_softmax = F.log_softmax(out, dim=1)
     acc = accuracy(out_softmax,data,'test_mask')
     attention = model.get_v_attention(data.edge_index,data.x.size(0),attention)
@@ -42,11 +50,13 @@ def run(data,model,optimizer,cfg):
 
     for epoch in range(cfg['epochs']):
         loss_val = train(data,model,optimizer)
+        intermediate_result_print(dataset=cfg['dataset'],data=data,model=model,test=test)
         if early_stopping(loss_val,model,epoch) is True:
             break
     
     model.load_state_dict(torch.load(cfg['path']))
     test_acc,attention,h = test(data,model)
+    print(f"dataset:{cfg['dataset']}, best epoch{early_stopping.epoch}, test_acc:{test_acc}")
     return test_acc,early_stopping.epoch,attention,h
 
 
@@ -67,6 +77,8 @@ def main(cfg):
     dataset = Flickr(root= root)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     data = dataset[0].to(device)
+    if cfg['label_feat']:
+        data.y_feat = set_label_features(y=data.y,num_nodes=data.num_nodes,num_class=cfg['n_class'],dataset=cfg['dataset'],train_mask=data.train_mask,device=device)
     train_index, val_index = torch.nonzero(data.train_mask).squeeze(),torch.nonzero(data.val_mask).squeeze()
     
     

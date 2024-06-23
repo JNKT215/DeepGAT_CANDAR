@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch_geometric.utils import (
     add_self_loops,
     remove_self_loops,
+    to_dense_adj,
 )
 from layer import DeepGATConv,GATConv
 
@@ -12,6 +13,9 @@ class DeepGAT(nn.Module):
         super().__init__()
         self.dropout = cfg['dropout']
         self.cfg = cfg
+        self.n_feat = cfg['n_feat'] +cfg['n_class']  if self.cfg['label_feat'] else cfg['n_feat']
+        self.n_hid_multiple_n_head = cfg['n_hid'] * cfg['n_head'] + cfg['n_class']  if self.cfg['label_feat'] else cfg['n_hid'] * cfg['n_head']
+        self.rm_diag_adjs = None
         self.mid_norms = nn.ModuleList()
         self.mid_convs = nn.ModuleList()
         self.mid_lins = nn.ModuleList()
@@ -35,55 +39,63 @@ class DeepGAT(nn.Module):
         
         if cfg["num_layer"] == 1:
             if cfg['task'] == 'Transductive':
-                self.outconv = DeepGATConv(in_channels=cfg['n_feat'], out_channels=cfg['n_class'], heads=cfg['n_head_last'], concat=False,dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
+                self.outconv = DeepGATConv(in_channels=self.n_feat, out_channels=cfg['n_class'],num_class=cfg['n_class'], heads=cfg['n_head_last'], concat=False,dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
             elif cfg['task'] == 'Inductive':
-                self.outconv = DeepGATConv(cfg['n_feat'], cfg['n_class'], heads=cfg['n_head_last'],concat=False,attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
+                self.outconv = DeepGATConv(in_channels=self.n_feat, out_channels=cfg['n_class'],num_class=cfg['n_class'], heads=cfg['n_head_last'],concat=False,attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
                 self.out_lin = torch.nn.Linear(cfg['n_feat'], cfg['n_class'])
         else: 
             if cfg['task'] == 'Transductive':
-                self.inconv = DeepGATConv(in_channels=cfg['n_feat'],out_channels=cfg['n_hid'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
+                self.inconv = DeepGATConv(in_channels=self.n_feat,out_channels=cfg['n_hid'],num_class=cfg['n_class'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
                 for _ in range(1,cfg["num_layer"]-1):
-                    self.mid_convs.append(DeepGATConv(in_channels=cfg['n_hid']*cfg['n_head'],out_channels=cfg['n_hid'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
-                self.outconv = DeepGATConv(in_channels=cfg['n_hid']*cfg['n_head'], out_channels=cfg['n_class'], heads=cfg['n_head_last'], concat=False,dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
+                    self.mid_convs.append(DeepGATConv(in_channels=self.n_hid_multiple_n_head,out_channels=cfg['n_hid'],num_class=cfg['n_class'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
+                self.outconv = DeepGATConv(in_channels=self.n_hid_multiple_n_head, out_channels=cfg['n_class'],num_class=cfg['n_class'], heads=cfg['n_head_last'], concat=False,dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
             elif cfg['task'] == 'Inductive':
-                self.inconv = DeepGATConv(cfg['n_feat'], cfg['n_hid'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
-                self.in_lin = torch.nn.Linear(cfg['n_feat'], cfg['n_head'] * cfg['n_hid'])
+                self.inconv = DeepGATConv(in_channels=self.n_feat, out_channels=cfg['n_hid'],num_class=cfg['n_class'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
+                self.in_lin = torch.nn.Linear(cfg['n_feat'], self.n_hid_multiple_n_head)
                 for _ in range(1,cfg["num_layer"]-1):
-                    self.mid_convs.append(DeepGATConv(cfg['n_head'] * cfg['n_hid'], cfg['n_hid'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
-                    self.mid_lins.append(torch.nn.Linear(cfg['n_head'] * cfg['n_hid'], cfg['n_head'] * cfg['n_hid']))
-                self.outconv = DeepGATConv(cfg['n_head'] * cfg['n_hid'], cfg['n_class'], heads=cfg['n_head_last'],concat=False,attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
-                self.out_lin = torch.nn.Linear(cfg['n_head'] * cfg['n_hid'], cfg['n_class'])
+                    self.mid_convs.append(DeepGATConv(in_channels=self.n_hid_multiple_n_head, out_channels=cfg['n_hid'],num_class=cfg['n_class'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
+                    self.mid_lins.append(torch.nn.Linear(self.n_hid_multiple_n_head, self.n_hid_multiple_n_head))
+                self.outconv = DeepGATConv(in_channels=self.n_hid_multiple_n_head, out_channels=cfg['n_class'],num_class=cfg['n_class'], heads=cfg['n_head_last'],concat=False,attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
+                self.out_lin = torch.nn.Linear(self.n_hid_multiple_n_head, cfg['n_class'])
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index,y_feat=None):
+        if self.cfg['label_feat']:
+            y_feats = [torch.mm(rm_diag_adj,y_feat) for rm_diag_adj in self.rm_diag_adjs]
         hs = []
         if self.cfg['task'] == 'Transductive':
             if self.cfg["num_layer"] !=1:
+                if self.cfg['label_feat']: x = torch.cat((x,y_feats[0]),dim=-1)
                 x = F.dropout(x, p=self.dropout, training=self.training)
                 x= self.inconv(x,edge_index)
                 x = self.in_norm(x)
                 hs.append(self.inconv.h)
                 x = F.elu(x)
-            for mid_conv,mid_norm in zip(self.mid_convs,self.mid_norms):
+            for n_layer,mid_conv,mid_norm in enumerate(zip(self.mid_convs,self.mid_norms)):
+                if self.cfg['label_feat']: x = torch.cat((x,y_feats[n_layer+1]),dim=-1)
                 x = F.dropout(x, p=self.dropout, training=self.training)
                 x = mid_conv(x, edge_index)
                 x = mid_norm(x)
                 hs.append(mid_conv.h)
                 x = F.elu(x)
+            if self.cfg['label_feat']: x = torch.cat((x,y_feats[-1]),dim=-1)
             x = F.dropout(x, p=self.dropout, training=self.training)
             x = self.outconv(x,edge_index)
             x = self.out_norm(x)
             hs.append(self.outconv.h)
         elif self.cfg['task'] == 'Inductive':
             if self.cfg["num_layer"] !=1:
+                if self.cfg['label_feat']: x = torch.cat((x,y_feats[0]),dim=-1)
                 x = self.inconv(x, edge_index) + self.in_lin(x)
                 x = self.in_norm(x)
                 hs.append(self.inconv.h)
                 x = F.elu(x)
-            for mid_conv,mid_lin,mid_norm in zip(self.mid_convs,self.mid_lins,self.mid_norms):
+            for n_layer,mid_conv,mid_lin,mid_norm in enumerate(zip(self.mid_convs,self.mid_lins,self.mid_norms)):
+                if self.cfg['label_feat']: x = torch.cat((x,y_feats[n_layer+1]),dim=-1)
                 x = mid_conv(x, edge_index) + mid_lin(x)
                 x = mid_norm(x)
                 hs.append(mid_conv.h)
                 x = F.elu(x)          
+            if self.cfg['label_feat']: x = torch.cat((x,y_feats[-1]),dim=-1)
             x = self.outconv(x, edge_index) + self.out_lin(x)
             x = self.out_norm(x)
             hs.append(self.outconv.h)
@@ -107,7 +119,30 @@ class DeepGAT(nn.Module):
             for i in range(self.cfg["num_layer"]-2):
                 self.mid_convs[i].get_oracle_attention(self.cfg['n_head'],edge_index,y,with_self_loops)
             self.outconv.get_oracle_attention(self.cfg['n_head_last'],edge_index,y,with_self_loops)
+            
+    def set_l_hops_rm_diag_adj(self,edge_index,num_nodes):
+        def rm_diag(matrix):
+            #元の行列に影響を与えないように
+            matrix = matrix.clone()
+            diag_indices = torch.arange(matrix.size(0))
+            matrix[diag_indices, diag_indices] = 0
+            return matrix
+            pass
+        # edge_index to adj matrix
+        adj = to_dense_adj(edge_index=edge_index,max_num_nodes=num_nodes)[0]
+        #calc row 
+        row_sum = adj.sum(dim=1)        
+        #行列和が0の場合のために，正規化のために安全ガードを追加
+        row_sum[row_sum == 0] = 1        
+        # 行和で各行を割ることで行正規化
+        row_normalized_adj = adj / row_sum.view(-1, 1)
 
+        adjs = [row_normalized_adj ** (n_layer) for n_layer in range(0,int(self.cfg['num_layer']))]
+        #calc rm_diag
+        self.rm_diag_adjs = [rm_diag(adj) for adj in adjs]
+        
+        # adjs = SparseTensor(row=data.edge_index[0],col=data.edge_index[1],sparse_sizes=(data.x.shape[0],data.x.shape[0]))         
+        # adjs_l = [ adjs**(n_layer) for n_layer in range(1,self.cfg['num_layer'])]
     
 
 
@@ -206,33 +241,44 @@ class Loss_func(nn.Module):
 
     def forward(self,out,y,mask=None,hs=[]): # モデルの出力と正解データ
         if self.cfg['task'] == 'Transductive':
-            out_softmax = F.log_softmax(out,dim=-1)
-            loss = F.nll_loss(out_softmax[mask],y[mask])
-            if self.cfg['mode'] == "DeepGAT":
+            if self.cfg['model'] == "GAT":
+                out_softmax = F.log_softmax(out,dim=-1)
+                loss = F.nll_loss(out_softmax[mask],y[mask])
+            elif self.cfg['model'] == "DeepGAT":
+                out_softmax = F.log_softmax(out,dim=-1)
+                loss = F.nll_loss(out_softmax[mask],y[mask]) * self.ganma_l(num_layer=self.cfg['num_layer'])
                 loss += self.get_y_preds_loss(hs,y,mask)
                 
         elif self.cfg['task'] == 'Inductive':
-            loss = self.loss_op(out,y)
-            if self.cfg['mode'] == "DeepGAT":
+            if self.cfg['model'] == "GAT":
+                loss = self.loss_op(out,y)
+            if self.cfg['model'] == "DeepGAT":
+                loss = self.loss_op(out,y) * self.ganma_l(num_layer=self.cfg['num_layer'])
                 loss += self.get_y_preds_loss_ppi(hs,y)
                 
         return loss
     
+    def ganma_l(self,num_layer): 
+        return self.cfg['δ'] * (num_layer + self.cfg['δ'])**(-1) +1
+        # return 1 * (self.cfg['δ'] +1) **((num_layer)*-(1)) +1
     
     def get_y_preds_loss(self,hs,y,mask):
         y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
-        for h in hs:
+        
+        for n_layer,h in enumerate(hs):
             h = h.mean(dim=1)
             y_pred = F.log_softmax(h, dim=-1)
-            y_pred_loss += F.nll_loss(y_pred[mask],y[mask])
+            y_pred_loss += F.nll_loss(y_pred[mask],y[mask]) * self.ganma_l(num_layer=n_layer)
 
         return y_pred_loss
 
     def get_y_preds_loss_ppi(self,hs,y):
         y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
-        for h in hs:
+        
+        for n_layer,h in enumerate(hs):
             h = h.mean(dim=1)
-            y_pred_loss += self.loss_op(h,y)
+            y_pred_loss += self.loss_op(h,y) * self.ganma_l(num_layer=n_layer)
+            
         return y_pred_loss
     
     
@@ -241,6 +287,8 @@ def return_model(cfg,data=None):
             model = GAT(cfg)
     elif cfg['model'] == 'DeepGAT':
         model = DeepGAT(cfg)
+        if cfg['label_feat']:
+            model.set_l_hops_rm_diag_adj(data.edge_index,data.num_nodes)
         if cfg['oracle_attention']:
             model.set_oracle_attention(data.edge_index,data.y)
     

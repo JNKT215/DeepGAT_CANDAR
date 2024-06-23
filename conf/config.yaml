@@ -65,6 +65,8 @@ GAT: &GAT
   att_type: DP
   norm: None 
   oracle_attention: False
+  label_feat: False
+  δ: 0.2
 
 # -------model instance + dataset-------
 GAT_cs: &GAT_cs
@@ -192,7 +194,7 @@ GAT_ppi_tuned_SD: &GAT_ppi_tuned_SD
 # DeepGAT updated Tuned hyper parameters
 
 #cs
-DeepGAT_cs_tuned_YDP_supervised_updated: &GAT_cs_tuned_YDP_supervised_updated
+DeepGAT_cs_tuned_YDP_supervised_updated: &DeepGAT_cs_tuned_YDP_supervised_updated
  <<: [*CS,*GAT]
  att_type: YDP
  dropout: 0.8
@@ -203,7 +205,7 @@ DeepGAT_cs_tuned_YDP_supervised_updated: &GAT_cs_tuned_YDP_supervised_updated
  weight_decay: 0.0001
  path: cs_checkpoint.pt
 
-DeepGAT_cs_tuned_YSD_supervised_updated: &GAT_cs_tuned_YSD_supervised_updated
+DeepGAT_cs_tuned_YSD_supervised_updated: &DeepGAT_cs_tuned_YSD_supervised_updated
  <<: [*CS,*GAT]
  att_type: YSD
  dropout: 0.8
@@ -216,7 +218,7 @@ DeepGAT_cs_tuned_YSD_supervised_updated: &GAT_cs_tuned_YSD_supervised_updated
 
 
 #physics
-DeepGAT_physics_tuned_YDP_supervised_updated: &GAT_physics_tuned_YDP_supervised_updated
+DeepGAT_physics_tuned_YDP_supervised_updated: &DeepGAT_physics_tuned_YDP_supervised_updated
  <<: [*Physics,*GAT]
  att_type: YDP
  dropout: 0.8
@@ -227,7 +229,7 @@ DeepGAT_physics_tuned_YDP_supervised_updated: &GAT_physics_tuned_YDP_supervised_
  weight_decay: 0
  path: physics_checkpoint.pt
 
-DeepGAT_physics_tuned_YSD_supervised_updated: &GAT_physics_tuned_YSD_supervised_updated
+DeepGAT_physics_tuned_YSD_supervised_updated: &DeepGAT_physics_tuned_YSD_supervised_updated
  <<: [*Physics,*GAT]
  att_type: YSD
  dropout:  0.6
@@ -239,7 +241,7 @@ DeepGAT_physics_tuned_YSD_supervised_updated: &GAT_physics_tuned_YSD_supervised_
  path: physics_checkpoint.pt
 
 #Flickr
-DeepGAT_Flickr_tuned_YDP_supervised_updated: &GAT_Flickr_tuned_YDP_supervised_updated
+DeepGAT_Flickr_tuned_YDP_supervised_updated: &DeepGAT_Flickr_tuned_YDP_supervised_updated
  <<: [*Flickr,*GAT]
  att_type: YDP
  dropout: 0.0
@@ -250,7 +252,7 @@ DeepGAT_Flickr_tuned_YDP_supervised_updated: &GAT_Flickr_tuned_YDP_supervised_up
  weight_decay: 0
  path: flickr_checkpoint.pt
   
-DeepGAT_Flickr_tuned_YSD_supervised_updated: &GAT_Flickr_tuned_YSD_supervised_updated
+DeepGAT_Flickr_tuned_YSD_supervised_updated: &DeepGAT_Flickr_tuned_YSD_supervised_updated
  <<: [*Flickr,*GAT]
  att_type: YSD
  dropout: 0.0
@@ -262,7 +264,7 @@ DeepGAT_Flickr_tuned_YSD_supervised_updated: &GAT_Flickr_tuned_YSD_supervised_up
  path: flickr_checkpoint.pt
 
 #ppi
-DeepGAT_ppi_tuned_YDP_supervised_updated: &GAT_ppi_tuned_YDP_supervised_updated
+DeepGAT_ppi_tuned_YDP_supervised_updated: &DeepGAT_ppi_tuned_YDP_supervised_updated
  <<: [*PPI,*GAT]
  n_head: 4
  n_head_last: 6
@@ -276,7 +278,7 @@ DeepGAT_ppi_tuned_YDP_supervised_updated: &GAT_ppi_tuned_YDP_supervised_updated
  class_num: Multi
  path: ppi_checkpoint.pt
 
-DeepGAT_ppi_tuned_YSD_supervised_updated: &GAT_ppi_tuned_YSD_supervised_updated
+DeepGAT_ppi_tuned_YSD_supervised_updated: &DeepGAT_ppi_tuned_YSD_supervised_updated
  <<: [*PPI,*GAT]
  n_head: 4
  n_head_last: 6
@@ -293,8 +295,11 @@ DeepGAT_ppi_tuned_YSD_supervised_updated: &GAT_ppi_tuned_YSD_supervised_updated
 
 #debag
 debag:
- <<: *DeepGAT_physics_tuned_YDP_supervised_updated
- oracle_attention: True
+ <<: *DeepGAT_cs_tuned_YDP_supervised_updated
+ oracle_attention: False
+ δ: 0.2
+ label_feat: True
+ n_hid: 512
  num_layer: 2
  run: 1
 

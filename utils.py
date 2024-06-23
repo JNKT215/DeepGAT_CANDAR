@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import os
 import mlflow
+import torch.nn.functional as F
 
 class EarlyStopping():
     def __init__(self,patience,path="checkpoint.pt"):
@@ -71,3 +72,27 @@ def accuracy(out,data,mask):
     mask = data[mask]
     acc = float((out[mask].argmax(-1) == data.y[mask]).sum() / mask.sum())
     return acc
+
+def set_label_features(y,num_nodes,num_class,dataset,train_mask,device):
+    if dataset != "PPI": #dataset == (CS or Physics or Flickr)
+        onthot_label_features = torch.zeros((num_nodes, num_class)).to(device)
+        onthot_label_features[train_mask] = F.one_hot(y[train_mask],num_class).float()
+        # onthot_label_features = F.one_hot(y, num_class).float()
+    else: #dataset == PPI
+        onthot_label_features = torch.zeros((num_nodes, num_class))
+        # onthot_label_features[train_mask] = y[train_mask].float()
+        onthot_label_features = y.float()
+    
+    return onthot_label_features
+
+def intermediate_result_print(dataset,epoch,data,model,test):
+    if dataset != "PPI": #dataset == (CS or Physics or Flickr)
+        _,_,out = test(data,model)
+        out_softmax = F.log_softmax(out, dim=1)
+        train_acc = accuracy(out_softmax,data,'train_mask')
+        val_acc   = accuracy(out_softmax,data,'val_mask')
+        test_acc  = accuracy(out_softmax,data,'test_mask')
+    else: #dataset==PPI
+        pass
+        
+    print(f"dataset:{dataset}, current epoch:{epoch}\n train_acc:{train_acc*100:.4f}, val_acc:{val_acc*100:.4f}, test_acc{test_acc*100:.4f}")

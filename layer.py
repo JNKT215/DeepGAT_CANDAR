@@ -15,7 +15,7 @@ from torch_geometric.nn.inits import zeros
 
 
 class DeepGATConv(MessagePassing):
-    def __init__(self, in_channels: int, out_channels: int, heads: int = 1,
+    def __init__(self, in_channels: int, out_channels: int, num_class: int, heads: int = 1,
                  concat: bool = True,dropout: float = 0.0, 
                  add_self_loops: bool = True,
                  bias: bool = True,attention_type: str = 'SD',class_num: str = 'Single',oracle_attention: bool = False, **kwargs):
@@ -34,13 +34,17 @@ class DeepGATConv(MessagePassing):
         self.class_num= class_num
         self.oracle_attention = oracle_attention
         self.oracle_alpha_ = None
+        self.num_class = num_class
 
         self.lin = Linear(in_channels, heads * out_channels, bias=False, weight_initializer='glorot')
+        self.lin_c = Linear(in_channels, heads * num_class, bias=False, weight_initializer='glorot')
 
         if bias and concat:
             self.bias = Parameter(torch.Tensor(heads * out_channels))
+            # self.bias_c = Parameter(torch.Tensor(heads * num_class))
         elif bias and not concat:
             self.bias = Parameter(torch.Tensor(out_channels))
+            # self.bias_c = Parameter(torch.Tensor(num_class))
         else:
             self.register_parameter('bias', None)
 
@@ -48,21 +52,30 @@ class DeepGATConv(MessagePassing):
 
     def reset_parameters(self):
         self.lin.reset_parameters()
+        self.lin_c.reset_parameters()
         zeros(self.bias)
+        # zeros(self.bias_c)
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
         
         N, H, C = x.size(0), self.heads, self.out_channels
+        H, Q = self.heads, self.num_class
 
         if self.add_self_loops:
             edge_index, _ = remove_self_loops(edge_index)
             edge_index, _ = add_self_loops(edge_index, num_nodes=N)
 
+        q= self.lin_c(x).view(-1, H, Q)
         x = self.lin(x).view(-1, H, C)
-        self.h = x
-
+        self.h = q
+        
+        # #正しい？検討する---
+        # if self.bias_c is not None:
+        #     self.h+=self.bias_c
+        # #----（ここまで）
+        
         # propagate_type: (x: Tensor)
-        out = self.propagate(edge_index, x=x, size=None)
+        out = self.propagate(edge_index, x=x,q=q, size=None)
 
         if self.concat is True:
             out = out.view(-1, self.heads * self.out_channels)
@@ -74,24 +87,24 @@ class DeepGATConv(MessagePassing):
 
         return out
 
-    def message(self, edge_index_i: Tensor, x_i: Tensor, x_j: Tensor,
+    def message(self, edge_index_i: Tensor, x_i: Tensor, x_j: Tensor, q_i: Tensor, q_j: Tensor,
                 size_i: Optional[int]) -> Tensor:
-        alpha = self.get_attention(edge_index_i, x_i, x_j, num_nodes=size_i)
+        alpha = self.get_attention(edge_index_i, q_i, q_j, num_nodes=size_i)
         self.alpha_ = alpha
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
         if self.oracle_attention:
             alpha = self.oracle_alpha_
         return x_j * alpha.unsqueeze(-1)
 
-    def get_attention(self, edge_index_i: Tensor, x_i: Tensor, x_j: Tensor,
+    def get_attention(self, edge_index_i: Tensor, q_i: Tensor, q_j: Tensor,
                       num_nodes: Optional[int]) -> Tensor:
                               
         if self.class_num == "Single":
-            y_pred_i = F.softmax(x_i,dim=-1)
-            y_pred_j = F.softmax(x_j,dim=-1)
+            y_pred_i = F.softmax(q_i,dim=-1)
+            y_pred_j = F.softmax(q_j,dim=-1)
         elif self.class_num == "Multi":
-            y_pred_i = torch.sigmoid(x_i)
-            y_pred_j = torch.sigmoid(x_j)
+            y_pred_i = torch.sigmoid(q_i)
+            y_pred_j = torch.sigmoid(q_j)
         
         if self.attention_type == "YDP":
             alpha = (y_pred_i * y_pred_j).sum(-1)

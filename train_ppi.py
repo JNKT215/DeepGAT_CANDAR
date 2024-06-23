@@ -7,7 +7,12 @@ import hydra
 from hydra import utils
 from tqdm import tqdm
 import mlflow
-from utils import EarlyStopping,set_seed,log_artifacts
+from utils import EarlyStopping,set_seed,log_artifacts,set_label_features
+
+def set_y_feat_for_train_loader(cfg,datasets):
+    for index in range(datasets):
+        datasets[index].y_feat = set_label_features(y=datasets[index].y,num_nodes=datasets[index].num_nodes,num_class=cfg['n_class'],dataset=cfg['dataset'],train_mask=None,device='cpu')
+    return datasets
 
 @torch.no_grad()
 def get_train_h(train_loader,model,device):
@@ -20,13 +25,16 @@ def get_train_h(train_loader,model,device):
 
 def train(loader,model,optimizer,device):
     model.train()
-    loss_func = Loss_func(model.cfg)
+    loss_func = Loss_func(cfg=model.cfg)
     total_loss = 0
                 
     for data in loader:
         data = data.to(device)
         optimizer.zero_grad()
-        out,hs,_ = model(data.x, data.edge_index)
+        if model.cfg["label_feat"]:
+            out,hs,_ = model(data.x, data.edge_index, data.y_feat)
+        else:
+            out,hs,_ = model(data.x, data.edge_index)
         loss = loss_func(out=out,y=data.y,hs=hs)
         total_loss += loss.item() * data.num_graphs
         loss.backward()
@@ -41,7 +49,10 @@ def test(loader,model,device):
     ys, preds,attentions,hs = [], [], [], []
     for data in loader: # only one batch (=g1+g2)
         ys.append(data.y)
-        out,_,attention = model(data.x.to(device), data.edge_index.to(device))
+        if model.cfg["label_feat"]:
+            out,_,attention = model(data.x.to(device), data.edge_index.to(device),data.y_feat.to(device))
+        else:
+            out,_,attention = model(data.x.to(device), data.edge_index.to(device))
         attention = model.get_v_attention(data.edge_index,data.x.size(0),attention)
         attentions.append(attention)
         hs.append(out)
@@ -80,6 +91,8 @@ def main(cfg):
     
     root = utils.get_original_cwd() + '/data/' + cfg['dataset']
     train_dataset = PPI(root, split='train')
+    if cfg['label_feat']:
+        train_dataset = set_y_feat_for_train_loader(cfg=cfg,datasets=train_dataset)
     val_dataset = PPI(root, split='val')
     test_dataset = PPI(root, split='test')
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
