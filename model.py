@@ -15,37 +15,22 @@ class DeepGAT(nn.Module):
         self.cfg = cfg
         self.n_feat = cfg['n_feat'] +cfg['n_class']  if self.cfg['label_feat'] else cfg['n_feat']
         # self.n_hid_multiple_n_head = cfg['n_hid'] * cfg['n_head'] + cfg['n_class']  if self.cfg['label_feat'] else cfg['n_hid'] * cfg['n_head']
-        self.n_hid_multiple_n_head_list = self.get_n_hid_multiple_n_head_list()
+        self.n_hid_list = self.get_n_hid_list()
+        self.n_hid_multiple_n_head_list = [ n_hid * cfg['n_head'] + cfg['n_class'] for n_hid in self.n_hid_list] if self.cfg['label_feat'] else [ n_hid * cfg['n_head'] for n_hid in self.n_hid_list]
         self.rm_diag_adjs = None
         self.mid_norms = nn.ModuleList()
         self.mid_convs = nn.ModuleList()
         self.mid_lins = nn.ModuleList()
         
         if cfg['norm'] == 'LayerNorm':
-            if self.cfg["label_feat"]: 
-                n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[0] - self.cfg["n_class"]
-            else:
-                n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[0]
-            self.in_norm = nn.LayerNorm(n_hid_multiple_n_head)
+            self.in_norm = nn.LayerNorm(self.n_hid_list[0] * cfg['n_head'])
             for n_layer in range(1,cfg["num_layer"]-1):
-                if self.cfg["label_feat"]:
-                    n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[n_layer] - self.cfg["n_class"]
-                else:
-                    n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[n_layer]
-                self.mid_norms.append(nn.LayerNorm(n_hid_multiple_n_head))
+                self.mid_norms.append(nn.LayerNorm(self.n_hid_list[n_layer] * cfg['n_head']))
             self.out_norm = nn.LayerNorm(cfg['n_class'])
         elif cfg['norm'] == 'BatchNorm1d':
-            if self.cfg["label_feat"]:
-                n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[0] - self.cfg["n_class"]
-            else:
-                n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[0]
-            self.in_norm = nn.BatchNorm1d(n_hid_multiple_n_head)
+            self.in_norm = nn.BatchNorm1d(self.n_hid_list[0] * cfg['n_head'])
             for n_layer in range(1,cfg["num_layer"]-1):
-                if self.cfg["label_feat"]:
-                    n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[n_layer] - self.cfg["n_class"]
-                else:
-                    n_hid_multiple_n_head = self.n_hid_multiple_n_head_list[n_layer]
-                self.mid_norms.append(nn.BatchNorm1d(n_hid_multiple_n_head))
+                self.mid_norms.append(nn.BatchNorm1d(self.n_hid_list[n_layer] * cfg['n_head']))
             self.out_norm = nn.BatchNorm1d(cfg['n_class'])
         else:
             self.in_norm = nn.Identity()
@@ -121,21 +106,13 @@ class DeepGAT(nn.Module):
     def dim_reduction_per_l(self,n_hid,n_layer):
         return int(n_hid - ((n_hid - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
     
-    def get_n_hid_multiple_n_head_list(self):
-        if self.cfg["label_feat"]:
-            n_hid_multiple_n_head_1 = self.cfg['n_hid'] * self.cfg['n_head'] + self.cfg['n_class']
-        else:
-            n_hid_multiple_n_head_1 = self.cfg['n_hid'] * self.cfg['n_head']
+    def get_n_hid_list(self):
+        n_hid_list = [self.cfg['n_hid']]        
+        for n_hid_index,n_layer in enumerate(range(1,self.cfg["num_layer"]-1)):
+            n_hid = self.dim_reduction_per_l(n_hid_list[n_hid_index],n_layer)
+            n_hid_list.append(n_hid)
 
-        n_hid_multiple_n_head_list = [n_hid_multiple_n_head_1]
-        for n_hid_multiple_n_head_index,n_layer in enumerate(range(2,self.cfg["num_layer"])):
-            n_hid = self.dim_reduction_per_l(n_hid_multiple_n_head_list[n_hid_multiple_n_head_index],n_layer)
-            if self.cfg["label_feat"]:
-                n_hid_multiple_n_head_list.append(n_hid * self.cfg['n_head'] + self.cfg['n_class'])
-            else:
-                n_hid_multiple_n_head_list.append(n_hid * self.cfg['n_head'])
-
-        return n_hid_multiple_n_head_list
+        return n_hid_list
 
 
 
