@@ -50,14 +50,14 @@ def run(data,model,optimizer,cfg):
 
     for epoch in range(cfg['epochs']):
         loss_val = train(data,model,optimizer)
-        intermediate_result_print(dataset=cfg['dataset'],data=data,model=model,test=test)
+        intermediate_result_print(dataset=cfg['dataset'],epoch=epoch,data=data,model=model,test=test)
         if early_stopping(loss_val,model,epoch) is True:
             break
     
     model.load_state_dict(torch.load(cfg['path']))
     test_acc,attention,h = test(data,model)
     print(f"dataset:{cfg['dataset']}, best epoch{early_stopping.epoch}, test_acc:{test_acc}")
-    return test_acc,early_stopping.epoch,attention,h
+    return test_acc * 100,early_stopping.epoch,attention,h
 
 
 @hydra.main(config_path='conf', config_name='config')

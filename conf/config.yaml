@@ -1,6 +1,38 @@
 key: debag
 experiment_name: debag
 
+# -------datasets (Planetoid)-------
+Planetoid: &Planetoid
+ task: Transductive
+ split: public
+ num_train_per_class: 20
+ num_val: 500
+ num_test : 1000
+ transform: None
+ pre_transform: None
+ run: 100
+
+Cora: &Cora
+  <<: *Planetoid
+  dataset: Cora
+  transform: T.NormalizeFeatures()
+  n_feat: 1433
+  n_class: 7
+
+Citeseer: &Citeseer
+  <<: *Planetoid
+  dataset: CiteSeer
+  transform: T.NormalizeFeatures()
+  n_feat: 3703
+  n_class: 6
+
+PubMed: &PubMed
+  <<: *Planetoid
+  dataset: PubMed
+  transform: None
+  n_feat: 500
+  n_class: 3
+
 # -------datasets (Coauthor)-------
 Coauthor: &Coauthor
  task: transductive
@@ -69,6 +101,23 @@ GAT: &GAT
   δ: 0.2
 
 # -------model instance + dataset-------
+GAT_cora: &GAT_cora
+  <<: [*Cora,*GAT]
+  n_hid: 8
+  path: cora_checkpoint.pt
+
+GAT_citeseer: &GAT_citeseer
+  <<: [*Citeseer,*GAT]
+  n_hid: 8
+  path: citeseer_checkpoint.pt
+  
+GAT_PubMed: &GAT_PubMed
+  <<: [*PubMed,*GAT]
+  learing_late: 0.001
+  n_head_last: 8
+  n_hid: 8
+  path: pubmed_checkpoint.pt
+
 GAT_cs: &GAT_cs
   <<: [*CS,*GAT]
   n_hid: 16
@@ -295,10 +344,12 @@ DeepGAT_ppi_tuned_YSD_supervised_updated: &DeepGAT_ppi_tuned_YSD_supervised_upda
 
 #debag
 debag:
- <<: *DeepGAT_cs_tuned_YDP_supervised_updated
+ <<: *GAT_cora
+ model: DeepGAT
+ att_type: YDP
  oracle_attention: False
  δ: 0.2
- label_feat: True
+ label_feat: False
  n_hid: 512
  num_layer: 2
  run: 1

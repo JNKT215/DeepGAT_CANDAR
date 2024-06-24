@@ -74,7 +74,7 @@ def run(loader,model,optimizer,device,cfg):
     model.load_state_dict(torch.load(cfg['path']))
     test_acc,attention,test_h = test(test_loader,model,device)
     train_h = get_train_h(train_loader,model,device)
-    return test_acc,early_stopping.epoch,attention,test_h,train_h
+    return test_acc * 100,early_stopping.epoch,attention,test_h,train_h
 
 @hydra.main(config_path='conf', config_name='config')
 def main(cfg):
