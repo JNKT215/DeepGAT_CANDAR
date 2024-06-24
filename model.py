@@ -61,7 +61,7 @@ class DeepGAT(nn.Module):
 
     def forward(self, x, edge_index,y_feat=None):
         if self.cfg['label_feat']:
-            y_feats = [torch.mm(rm_diag_adj,y_feat) for rm_diag_adj in self.rm_diag_adjs]
+            y_feats = [rm_diag_adj @ y_feat for rm_diag_adj in self.rm_diag_adjs]
         hs = []
         if self.cfg['task'] == 'Transductive':
             if self.cfg["num_layer"] !=1:
