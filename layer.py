@@ -67,7 +67,7 @@ class DeepGATConv(MessagePassing):
 
         q= self.lin_c(x).view(-1, H, Q)
         x = self.lin(x).view(-1, H, C)
-        self.h = q
+        self.h = q.clone().detach()
         
         # #正しい？検討する---
         # if self.bias_c is not None:
