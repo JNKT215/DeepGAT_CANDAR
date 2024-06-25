@@ -344,14 +344,14 @@ DeepGAT_ppi_tuned_YSD_supervised_updated: &DeepGAT_ppi_tuned_YSD_supervised_upda
 
 #debag
 debag:
- <<: *GAT_cora
+ <<: *GAT_physics
  model: DeepGAT
  att_type: YDP
  oracle_attention: False
  δ: 0.2
  label_feat: False
  n_hid: 512
- num_layer: 2
+ num_layer: 4
  run: 1
 
 
