@@ -102,13 +102,13 @@ class DeepGAT(nn.Module):
             hs.append(self.outconv.h)
         return x,hs,self.outconv.alpha_
     
-    def dim_reduction_per_l(self,n_hid,n_layer):
-        return int(n_hid - ((n_hid - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
+    def dim_reduction_per_l(self,n_layer):
+        return int(self.cfg['n_hid'] - ((self.cfg['n_hid'] - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
     
     def get_n_hid_list(self):
         n_hid_list = [self.cfg['n_hid']]        
-        for n_hid_index,n_layer in enumerate(range(1,self.cfg["num_layer"]-1)):
-            n_hid = self.dim_reduction_per_l(n_hid_list[n_hid_index],n_layer)
+        for n_layer in range(1,self.cfg["num_layer"]-1):
+            n_hid = self.dim_reduction_per_l(n_layer=n_layer)
             n_hid_list.append(n_hid)
 
         return n_hid_list
