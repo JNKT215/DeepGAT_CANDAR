@@ -59,7 +59,7 @@ def log_artifacts(artifacts,output_path=None):
                 if output_path is not None:
                     artifact_name = f"{output_path}/{artifact_name}"
                     os.makedirs(output_path, exist_ok=True)
-                np.save(artifact_name, artifact)
+                np.save(artifact_name, np.array(artifact,dtype=object))
                 mlflow.log_artifact(artifact_name)
             elif artifact is not None and artifact !=[]:
                 if output_path is not None:

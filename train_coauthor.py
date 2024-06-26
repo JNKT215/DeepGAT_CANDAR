@@ -91,7 +91,7 @@ def run(data,model,optimizer,cfg):
     
     model.load_state_dict(torch.load(cfg['path']))
     test_acc,attention,h = test(data,model)
-    print(f"dataset:{cfg['dataset']}, best epoch{early_stopping.epoch}, test_acc:{test_acc}")
+    print(f"dataset:{cfg['dataset']}, best epoch{early_stopping.epoch}, test_acc:{test_acc* 100}")
     return test_acc * 100,early_stopping.epoch,attention,h
 
 

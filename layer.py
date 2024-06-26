@@ -41,10 +41,8 @@ class DeepGATConv(MessagePassing):
 
         if bias and concat:
             self.bias = Parameter(torch.Tensor(heads * out_channels))
-            # self.bias_c = Parameter(torch.Tensor(heads * num_class))
         elif bias and not concat:
             self.bias = Parameter(torch.Tensor(out_channels))
-            # self.bias_c = Parameter(torch.Tensor(num_class))
         else:
             self.register_parameter('bias', None)
 
@@ -54,7 +52,6 @@ class DeepGATConv(MessagePassing):
         self.lin.reset_parameters()
         self.lin_c.reset_parameters()
         zeros(self.bias)
-        # zeros(self.bias_c)
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
         
@@ -67,13 +64,8 @@ class DeepGATConv(MessagePassing):
 
         q= self.lin_c(x).view(-1, H, Q)
         x = self.lin(x).view(-1, H, C)
-        self.h = q.clone().detach()
-        
-        # #正しい？検討する---
-        # if self.bias_c is not None:
-        #     self.h+=self.bias_c
-        # #----（ここまで）
-        
+        self.h = q.clone()
+                
         # propagate_type: (x: Tensor)
         out = self.propagate(edge_index, x=x,q=q, size=None)
 

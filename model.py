@@ -15,8 +15,8 @@ class DeepGAT(nn.Module):
         self.cfg = cfg
         self.n_feat = cfg['n_feat'] +cfg['n_class']  if self.cfg['label_feat'] else cfg['n_feat']
         self.n_hid_list = self.get_n_hid_list()
-        self.n_hid_multiple_n_head_list = [n_hid * cfg['n_head'] + cfg['n_class'] for n_hid in self.n_hid_list] if self.cfg['label_feat'] else [n_hid * cfg['n_head'] for n_hid in self.n_hid_list]
-        self.rm_diag_adjs = None
+        self.n_hid_multiple_n_head_list = [(n_hid+ cfg['n_class']) * cfg['n_head']  for n_hid in self.n_hid_list] if self.cfg['label_feat'] else [n_hid * cfg['n_head'] for n_hid in self.n_hid_list]
+        self.rm_diag_row_normalized_adjs = None
         self.mid_norms = nn.ModuleList()
         self.mid_convs = nn.ModuleList()
         self.mid_lins = nn.ModuleList()
@@ -48,55 +48,54 @@ class DeepGAT(nn.Module):
             if cfg['task'] == 'Transductive':
                 self.inconv = DeepGATConv(in_channels=self.n_feat,out_channels=cfg['n_hid'],num_class=cfg['n_class'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
                 for n_layer in range(1,cfg["num_layer"]-1):
-                    self.mid_convs.append(DeepGATConv(in_channels=self.n_hid_multiple_n_head_list[n_layer-1],out_channels=self.n_hid_multiple_n_head_list[n_layer],num_class=cfg['n_class'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
+                    self.mid_convs.append(DeepGATConv(in_channels=self.n_hid_multiple_n_head_list[n_layer-1],out_channels=self.n_hid_list[n_layer],num_class=cfg['n_class'], heads=cfg['n_head'], dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
                 self.outconv = DeepGATConv(in_channels=self.n_hid_multiple_n_head_list[-1], out_channels=cfg['n_class'],num_class=cfg['n_class'], heads=cfg['n_head_last'], concat=False,dropout=cfg['n_layer_dropout'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
             elif cfg['task'] == 'Inductive':
                 self.inconv = DeepGATConv(in_channels=self.n_feat, out_channels=cfg['n_hid'],num_class=cfg['n_class'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
                 self.in_lin = torch.nn.Linear(cfg['n_feat'], self.n_hid_multiple_n_head_list[0])
                 for n_layer in range(1,cfg["num_layer"]-1):
-                    self.mid_convs.append(DeepGATConv(in_channels=self.n_hid_multiple_n_head_list[n_layer-1], out_channels=self.n_hid_multiple_n_head_list[n_layer],num_class=cfg['n_class'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
+                    self.mid_convs.append(DeepGATConv(in_channels=self.n_hid_multiple_n_head_list[n_layer-1], out_channels=self.n_hid_list[n_layer],num_class=cfg['n_class'], heads=cfg['n_head'],attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention']))
                     self.mid_lins.append(torch.nn.Linear(self.n_hid_multiple_n_head_list[n_layer], self.n_hid_multiple_n_head_list[n_layer]))
                 self.outconv = DeepGATConv(in_channels=self.n_hid_multiple_n_head_list[-1], out_channels=cfg['n_class'],num_class=cfg['n_class'], heads=cfg['n_head_last'],concat=False,attention_type=cfg['att_type'],class_num=cfg['class_num'],oracle_attention=cfg['oracle_attention'])
                 self.out_lin = torch.nn.Linear(self.n_hid_multiple_n_head_list[-1], cfg['n_class'])
 
     def forward(self, x, edge_index,y_feat=None):
-        if self.cfg['label_feat']:
-            y_feats = [rm_diag_adj @ y_feat for rm_diag_adj in self.rm_diag_adjs]
+        if self.cfg['label_feat']: y_feats = [rm_diag_adj @ y_feat for rm_diag_adj in self.rm_diag_row_normalized_adjs]
         hs = []
         if self.cfg['task'] == 'Transductive':
             if self.cfg["num_layer"] !=1:
-                if self.cfg['label_feat']: x = torch.cat((x,y_feats[0]),dim=-1)
+                if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=0)
                 x = F.dropout(x, p=self.dropout, training=self.training)
                 x= self.inconv(x,edge_index)
                 x = self.in_norm(x)
                 hs.append(self.inconv.h)
                 x = F.elu(x)
-            for n_layer,mid_conv,mid_norm in enumerate(zip(self.mid_convs,self.mid_norms)):
-                if self.cfg['label_feat']: x = torch.cat((x,y_feats[n_layer+1]),dim=-1)
+            for n_layer,(mid_conv,mid_norm) in enumerate(zip(self.mid_convs,self.mid_norms),1):
+                if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=n_layer)
                 x = F.dropout(x, p=self.dropout, training=self.training)
                 x = mid_conv(x, edge_index)
                 x = mid_norm(x)
                 hs.append(mid_conv.h)
                 x = F.elu(x)
-            if self.cfg['label_feat']: x = torch.cat((x,y_feats[-1]),dim=-1)
+            if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=self.cfg['num_layer']-1) # L-layer
             x = F.dropout(x, p=self.dropout, training=self.training)
             x = self.outconv(x,edge_index)
             x = self.out_norm(x)
             hs.append(self.outconv.h)
         elif self.cfg['task'] == 'Inductive':
             if self.cfg["num_layer"] !=1:
-                if self.cfg['label_feat']: x = torch.cat((x,y_feats[0]),dim=-1)
+                if self.cfg['label_feat']: self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=0)
                 x = self.inconv(x, edge_index) + self.in_lin(x)
                 x = self.in_norm(x)
                 hs.append(self.inconv.h)
                 x = F.elu(x)
-            for n_layer,mid_conv,mid_lin,mid_norm in enumerate(zip(self.mid_convs,self.mid_lins,self.mid_norms)):
-                if self.cfg['label_feat']: x = torch.cat((x,y_feats[n_layer+1]),dim=-1)
+            for n_layer,(mid_conv,mid_lin,mid_norm) in enumerate(zip(self.mid_convs,self.mid_lins,self.mid_norms),1):
+                if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=n_layer)
                 x = mid_conv(x, edge_index) + mid_lin(x)
                 x = mid_norm(x)
                 hs.append(mid_conv.h)
                 x = F.elu(x)          
-            if self.cfg['label_feat']: x = torch.cat((x,y_feats[-1]),dim=-1)
+            if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=self.cfg['num_layer']-1) # L-layer
             x = self.outconv(x, edge_index) + self.out_lin(x)
             x = self.out_norm(x)
             hs.append(self.outconv.h)
@@ -105,6 +104,16 @@ class DeepGAT(nn.Module):
     def dim_reduction_per_l(self,n_layer):
         return int(self.cfg['n_hid'] - ((self.cfg['n_hid'] - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
     
+    def cat_x_and_y_feat(self,x,y_feats,n_layer):
+        if n_layer==0:
+            return torch.cat((x,y_feats[n_layer]),dim=-1)            
+        x = x.view(-1,self.cfg["n_head"],self.n_hid_list[n_layer-1])
+        y_feat = y_feats[n_layer].unsqueeze(1).repeat(1,self.cfg['n_head'],1)
+        x = torch.cat((x,y_feat),dim=-1)
+        x = x.view(-1,self.cfg['n_head']*(self.n_hid_list[n_layer-1]+self.cfg['n_class']))
+        return x
+        
+    
     def get_n_hid_list(self):
         n_hid_list = [self.cfg['n_hid']]        
         for n_layer in range(1,self.cfg["num_layer"]-1):
@@ -112,11 +121,6 @@ class DeepGAT(nn.Module):
             n_hid_list.append(n_hid)
 
         return n_hid_list
-
-
-
-
-
 
     def get_v_attention(self, edge_index,num_nodes,att):
         edge_index, _ = remove_self_loops(edge_index)
@@ -137,29 +141,39 @@ class DeepGAT(nn.Module):
                 self.mid_convs[i].get_oracle_attention(self.cfg['n_head'],edge_index,y,with_self_loops)
             self.outconv.get_oracle_attention(self.cfg['n_head_last'],edge_index,y,with_self_loops)
             
-    def set_l_hops_rm_diag_adj(self,edge_index,num_nodes):
+    def set_l_hops_rm_diag_row_normalized_adj(self,edge_index,num_nodes,with_self_loops=True):
         def rm_diag(matrix):
-            #元の行列に影響を与えないように
             matrix = matrix.clone()
             diag_indices = torch.arange(matrix.size(0))
             matrix[diag_indices, diag_indices] = 0
             return matrix
-            pass
-        # edge_index to adj matrix
-        adj = to_dense_adj(edge_index=edge_index,max_num_nodes=num_nodes)[0]
-        #calc row 
-        row_sum = adj.sum(dim=1)        
-        #行列和が0の場合のために，正規化のために安全ガードを追加
-        row_sum[row_sum == 0] = 1        
-        # 行和で各行を割ることで行正規化
-        row_normalized_adj = adj / row_sum.view(-1, 1)
-
-        adjs = [row_normalized_adj ** (n_layer) for n_layer in range(0,int(self.cfg['num_layer']))]
-        #calc rm_diag
-        self.rm_diag_adjs = [rm_diag(adj) for adj in adjs]
+        def get_row_normalize_adj(adj):
+            row_sum = adj.sum(dim=1) 
+            row_sum[row_sum == 0] = 1  # avoid division by zero
+            row_normalized_adj = adj / row_sum.view(-1, 1)
+            return row_normalized_adj
+            
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        # adjs = SparseTensor(row=data.edge_index[0],col=data.edge_index[1],sparse_sizes=(data.x.shape[0],data.x.shape[0]))         
-        # adjs_l = [ adjs**(n_layer) for n_layer in range(1,self.cfg['num_layer'])]
+        # Add self-loops and sort by index
+        if with_self_loops:
+            edge_index, _ = remove_self_loops(edge_index)
+            edge_index, _ = add_self_loops(edge_index, num_nodes=num_nodes)  # [2, E + N]
+        
+        # calc adj_matrix
+        adj = torch.zeros(num_nodes,num_nodes).to(device)
+        for i in range(len(edge_index[0])):
+            adj[edge_index[0][i]][edge_index[1][i]] = 1
+        adj = adj.float()
+        
+        #get row normarized adj
+        row_normalized_adj = get_row_normalize_adj(adj)
+    
+        row_normalized_adjs = [row_normalized_adj ** (n_layer) for n_layer in range(1,int(self.cfg['num_layer']))]
+        row_normalized_adjs.insert(0,torch.eye(num_nodes).float().to(device))
+        
+        self.rm_diag_row_normalized_adjs = [rm_diag(adj) for adj in row_normalized_adjs]
+        
     
 
 
@@ -305,7 +319,7 @@ def return_model(cfg,data=None):
     elif cfg['model'] == 'DeepGAT':
         model = DeepGAT(cfg)
         if cfg['label_feat']:
-            model.set_l_hops_rm_diag_adj(data.edge_index,data.num_nodes)
+            model.set_l_hops_rm_diag_row_normalized_adj(data.edge_index,data.num_nodes)
         if cfg['oracle_attention']:
             model.set_oracle_attention(data.edge_index,data.y)
     
