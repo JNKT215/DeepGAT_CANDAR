@@ -98,7 +98,7 @@ GAT: &GAT
   norm: None 
   oracle_attention: False
   label_feat: False
-  δ: 0.2
+  delta: 0.2
 
 # -------model instance + dataset-------
 GAT_cora: &GAT_cora
@@ -344,14 +344,15 @@ DeepGAT_ppi_tuned_YSD_supervised_updated: &DeepGAT_ppi_tuned_YSD_supervised_upda
 
 #debag
 debag:
- <<: *GAT_physics
+ <<: *GAT_cora
  model: DeepGAT
  att_type: YDP
  oracle_attention: False
- δ: 0.2
- label_feat: False
- n_hid: 512
+ delta: 0.2
+ label_feat: True
+ n_hid: 64
  num_layer: 4
+ epochs: 1
  run: 1
 
 

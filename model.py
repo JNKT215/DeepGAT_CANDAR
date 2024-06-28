@@ -290,8 +290,8 @@ class Loss_func(nn.Module):
         return loss
     
     def ganma_l(self,num_layer): 
-        return self.cfg['δ'] * (num_layer + self.cfg['δ'])**(-1) +1
-        # return 1 * (self.cfg['δ'] +1) **((num_layer)*-(1)) +1
+        return self.cfg['delta'] * (num_layer + self.cfg['delta'])**(-1) +1
+        # return 1 * (self.cfg['delta'] +1) **((num_layer)*-(1)) +1
     
     def get_y_preds_loss(self,hs,y,mask):
         y_pred_loss = torch.tensor(0, dtype=torch.float32,device=hs[0].device)
