@@ -141,6 +141,9 @@ def main(cfg):
         epochs.append(epoch)
         attentions.append(attention)
         hs.append(h)
+        del model
+        torch.cuda.empty_cache()
+
         
     acc_max_index = test_accs.index(max(test_accs))
     artifacts[f"{cfg['dataset']}_{cfg['att_type']}_attention_L{cfg['num_layer']}.npy"] = attentions[acc_max_index]

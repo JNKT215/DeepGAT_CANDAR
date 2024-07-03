@@ -14,7 +14,7 @@ class DeepGAT(nn.Module):
         self.dropout = cfg['dropout']
         self.cfg = cfg
         self.n_feat = cfg['n_feat'] +cfg['n_class']  if self.cfg['label_feat'] else cfg['n_feat']
-        self.n_hid_list = self.get_n_hid_list()
+        self.n_hid_list = [cfg['n_hid'] for _ in range(self.cfg["num_layer"]-1)]
         self.n_hid_multiple_n_head_list = [(n_hid+ cfg['n_class']) * cfg['n_head']  for n_hid in self.n_hid_list] if self.cfg['label_feat'] else [n_hid * cfg['n_head'] for n_hid in self.n_hid_list]
         self.rm_diag_row_normalized_adjs = None
         self.mid_norms = nn.ModuleList()
@@ -101,8 +101,6 @@ class DeepGAT(nn.Module):
             hs.append(self.outconv.h)
         return x,hs,self.outconv.alpha_
     
-    def dim_reduction_per_l(self,n_layer):
-        return int(self.cfg['n_hid'] - ((self.cfg['n_hid'] - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
     
     def cat_x_and_y_feat(self,x,y_feats,n_layer):
         if n_layer==0:
@@ -113,14 +111,16 @@ class DeepGAT(nn.Module):
         x = x.view(-1,self.cfg['n_head']*(self.n_hid_list[n_layer-1]+self.cfg['n_class']))
         return x
         
+    # def dim_reduction_per_l(self,n_layer):
+    #     return int(self.cfg['n_hid'] - ((self.cfg['n_hid'] - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
     
-    def get_n_hid_list(self):
-        n_hid_list = [self.cfg['n_hid']]        
-        for n_layer in range(1,self.cfg["num_layer"]-1):
-            n_hid = self.dim_reduction_per_l(n_layer=n_layer)
-            n_hid_list.append(n_hid)
+    # def get_n_hid_list(self):
+    #     n_hid_list = [self.cfg['n_hid']]        
+    #     for n_layer in range(1,self.cfg["num_layer"]-1):
+    #         n_hid = self.dim_reduction_per_l(n_layer=n_layer)
+    #         n_hid_list.append(n_hid)
 
-        return n_hid_list
+    #     return n_hid_list
 
     def get_v_attention(self, edge_index,num_nodes,att):
         edge_index, _ = remove_self_loops(edge_index)

@@ -120,7 +120,9 @@ def main(cfg):
         attentions.append(attention)
         test_hs.append(test_h)
         train_hs.append(train_h)
-    
+        del model
+        torch.cuda.empty_cache()
+
     acc_max_index = test_accs.index(max(test_accs))
     artifacts[f"{cfg['dataset']}_{cfg['att_type']}_attention_L{cfg['num_layer']}.npy"] = attentions[acc_max_index]
     artifacts[f"{cfg['dataset']}_{cfg['att_type']}_test_h_L{cfg['num_layer']}.npy"] = test_hs[acc_max_index]
