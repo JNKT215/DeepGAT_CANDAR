@@ -342,17 +342,113 @@ DeepGAT_ppi_tuned_YSD_supervised_updated: &DeepGAT_ppi_tuned_YSD_supervised_upda
  path: ppi_checkpoint.pt
 
 
+# -------model instance (our study)-------
+# DeepGAT_CANDAR updated Tuned hyper parameters
+DeepGAT_CANDAR_cora_tuned: &DeepGAT_CANDAR_cora_tuned
+ <<: [*Cora,*GAT]
+ att_type: YSD
+ dropout: 0.6
+ learing_late: 0.05
+ model: DeepGAT
+ n_hid: 16
+ norm: LayerNorm
+ weight_decay: 0.0005
+ delta: 0.4
+ label_feat: True 
+ path: cora_checkpoint.pt
+
+DeepGAT_CANDAR_citeseer_tuned: &DeepGAT_CANDAR_citeseer_tuned
+ <<: [*Citeseer,*GAT]
+ att_type: YSD
+ dropout: 0.4
+ learing_late: 0.01
+ model: DeepGAT
+ n_hid: 16
+ norm: None
+ weight_decay: 0.001
+ delta: 0.4
+ label_feat: True 
+ path: citeseer_checkpoint.pt
+
+DeepGAT_CANDAR_pubmed_tuned: &DeepGAT_CANDAR_pubmed_tuned
+ <<: [*PubMed,*GAT]
+ att_type: YSD
+ dropout: 0.4
+ learing_late: 0.001
+ model: DeepGAT
+ n_hid: 64
+ norm: None
+ weight_decay: 0.0001
+ delta: 0.6
+ label_feat: True 
+ path: pubmed_checkpoint.pt
+
+DeepGAT_CANDAR_cs_tuned: &DeepGAT_CANDAR_cs_tuned
+ <<: [*CS,*GAT]
+ att_type: YSD
+ dropout: 0.4
+ learing_late: 0.05
+ model: DeepGAT
+ n_hid: 16
+ norm: LayerNorm
+ weight_decay: 0.0001
+ delta: 0.4
+ label_feat: True 
+ path: cs_checkpoint.pt
+
+# DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
+#  <<: [*Physics,*GAT]
+#  att_type: YSD
+#  dropout: 
+#  learing_late: 
+#  model: DeepGAT
+#  n_hid: 
+#  norm: 
+#  weight_decay:
+#  delta:
+#  label_feat: True 
+#  path: physics_checkpoint.pt
+
+# DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
+#  <<: [*Flickr,*GAT]
+#  att_type: YSD
+#  dropout: 
+#  learing_late: 
+#  model: DeepGAT
+#  n_hid: 
+#  norm: 
+#  weight_decay:
+#  delta:
+#  label_feat: True 
+#  path: flickr_checkpoint.pt
+
+# DeepGAT_CANDAR_ppi_tuned: &DeepGAT_CANDAR_ppi_tuned
+#  <<: [*PPI,*GAT]
+#  att_type: YSD
+#  dropout: 
+#  learing_late: 
+#  model: DeepGAT
+#  n_hid: 
+#  norm: 
+#  weight_decay:
+#  delta:
+#  label_feat: True 
+#  path: ppi_checkpoint.pt
+
+
+
+
 #debag
 debag:
- <<: *GAT_cora
+ <<: *GAT_physics
  model: DeepGAT
  att_type: YDP
  oracle_attention: False
  delta: 0.2
  label_feat: True
- n_hid: 64
- num_layer: 4
- epochs: 1
+ n_hid: 16
+ num_layer: 2
+ epochs: 200
  run: 1
 
 
@@ -365,4 +461,4 @@ hydra:
       _target_: optuna.samplers.TPESampler
     direction: maximize
     n_jobs: 1
-    n_trials: 100
+    n_trials: 50
