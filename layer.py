@@ -106,8 +106,8 @@ class DeepGATConv(MessagePassing):
         alpha = softmax(alpha, edge_index_i, num_nodes=num_nodes)
         return alpha
     
-    def get_oracle_attention(self,head,edge_index,y,with_self_loops=True):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    def get_oracle_attention(self,head,edge_index,y,gpu_id,with_self_loops=True):
+        device = torch.device(f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu')
         y = y.squeeze()
         num_nodes = y.size(0)
         # Add self-loops and sort by index

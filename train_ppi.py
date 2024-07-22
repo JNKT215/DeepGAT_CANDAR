@@ -100,7 +100,7 @@ def main(cfg):
     test_loader = DataLoader(test_dataset, batch_size=2, shuffle=False)
     loader =[train_loader,test_loader]
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{cfg.gpu_id}' if torch.cuda.is_available() else 'cpu')
     train_xs,train_ys,test_xs,test_ys = [data.x for data in train_loader],[data.y for data in train_loader],[data.x for data in test_loader],[data.y for data in test_loader]
     
     artifacts,test_accs,epochs,attentions,test_hs,train_hs = {},[],[],[],[],[]

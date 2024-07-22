@@ -75,7 +75,7 @@ def main(cfg):
         
     root = utils.get_original_cwd() + '/data/' + cfg['dataset']
     dataset = Flickr(root= root)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{cfg.gpu_id}' if torch.cuda.is_available() else 'cpu')
     data = dataset[0].to(device)
     if cfg['label_feat']:
         data.y_feat = set_label_features(y=data.y,num_nodes=data.num_nodes,num_class=cfg['n_class'],dataset=cfg['dataset'],train_mask=data.train_mask,device=device)

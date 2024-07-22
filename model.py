@@ -136,10 +136,10 @@ class DeepGAT(nn.Module):
     
     def set_oracle_attention(self,edge_index,y,with_self_loops=True):
             if self.cfg["num_layer"] !=1:
-                self.inconv.get_oracle_attention(self.cfg['n_head'],edge_index,y,with_self_loops)
+                self.inconv.get_oracle_attention(self.cfg['n_head'],edge_index,y,self.cfg["gpu_id"],with_self_loops)
             for i in range(self.cfg["num_layer"]-2):
-                self.mid_convs[i].get_oracle_attention(self.cfg['n_head'],edge_index,y,with_self_loops)
-            self.outconv.get_oracle_attention(self.cfg['n_head_last'],edge_index,y,with_self_loops)
+                self.mid_convs[i].get_oracle_attention(self.cfg['n_head'],edge_index,y,self.cfg["gpu_id"],with_self_loops)
+            self.outconv.get_oracle_attention(self.cfg['n_head_last'],edge_index,y,self.cfg["gpu_id"],with_self_loops)
             
     def set_l_hops_rm_diag_row_normalized_adj(self,edge_index,num_nodes,with_self_loops=True):
         def rm_diag(matrix):
@@ -153,7 +153,7 @@ class DeepGAT(nn.Module):
             row_normalized_adj = adj / row_sum.view(-1, 1)
             return row_normalized_adj
             
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device(f'cuda:{self.cfg.gpu_id}' if torch.cuda.is_available() else 'cpu')
         
         # Add self-loops and sort by index
         if with_self_loops:

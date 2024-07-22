@@ -99,6 +99,8 @@ GAT: &GAT
   oracle_attention: False
   label_feat: False
   delta: 0.2
+  gpu_id: 0
+
 
 # -------model instance + dataset-------
 GAT_cora: &GAT_cora

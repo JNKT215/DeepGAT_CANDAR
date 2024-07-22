@@ -119,7 +119,7 @@ def main(cfg):
                         transform     = eval(cfg['transform']),
                         pre_transform = eval(cfg['pre_transform']))
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{cfg.gpu_id}' if torch.cuda.is_available() else 'cpu')
     data = dataset[0].to(device)
     data,index = random_splits(data=data,num_classes=cfg["n_class"],lcc_mask=None)
     if cfg['label_feat']:
