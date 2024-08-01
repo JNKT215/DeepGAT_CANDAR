@@ -62,6 +62,7 @@ class DeepGAT(nn.Module):
                 self.out_lin = torch.nn.Linear(self.n_hid_multiple_n_head_list[-1], cfg['n_class'])
 
     def forward(self, x, edge_index,y_feat=None):
+        if self.cfg["use_cpu"]: y_feat = y_feat.to("cpu")
         if self.cfg['label_feat']: y_feats = [rm_diag_adj @ y_feat for rm_diag_adj in self.rm_diag_row_normalized_adjs]
         hs = []
         if self.cfg['task'] == 'Transductive':
@@ -105,12 +106,20 @@ class DeepGAT(nn.Module):
     
     
     def cat_x_and_y_feat(self,x,y_feats,n_layer):
+        n_layer_y_feat = y_feats[n_layer]
+        if self.cfg['use_cpu']:
+            n_layer_y_feat = n_layer_y_feat.clone().to(f"cuda:{self.cfg['gpu_id']}")
         if n_layer==0:
-            return torch.cat((x,y_feats[n_layer]),dim=-1)            
+            x = torch.cat((x,n_layer_y_feat),dim=-1)
+            del n_layer_y_feat
+            torch.cuda.empty_cache()            
+            return x            
         x = x.view(-1,self.cfg["n_head"],self.n_hid_list[n_layer-1])
-        y_feat = y_feats[n_layer].unsqueeze(1).repeat(1,self.cfg['n_head'],1)
+        y_feat = n_layer_y_feat.unsqueeze(1).repeat(1,self.cfg['n_head'],1)
         x = torch.cat((x,y_feat),dim=-1)
         x = x.view(-1,self.cfg['n_head']*(self.n_hid_list[n_layer-1]+self.cfg['n_class']))
+        del n_layer_y_feat
+        torch.cuda.empty_cache()
         return x
         
     def get_v_attention(self, edge_index,num_nodes,att):
@@ -147,7 +156,11 @@ class DeepGAT(nn.Module):
         identity_matrix = SparseTensor(row=edge_index[0],col=edge_index[1],sparse_sizes=(num_nodes,num_nodes))
         identity_matrix.storage._value = None
         identity_matrix.storage._value = torch.ones(identity_matrix.nnz()).to(device=device)
-       
+        
+        if self.cfg['use_cpu']:
+            adj = adj.to("cpu")
+            identity_matrix = identity_matrix.to("cpu")
+        
         adjs = [identity_matrix,adj]
         for n_layer in range(1,self.cfg["num_layer"]-1):
             tmp_adj = adjs[n_layer].matmul(adj)
