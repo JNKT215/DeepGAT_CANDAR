@@ -7,6 +7,8 @@ from torch_geometric.utils import (
     to_dense_adj,
 )
 from layer import DeepGATConv,GATConv
+from torch_sparse import SparseTensor,remove_diag
+
 
 class DeepGAT(nn.Module):
     def __init__(self,cfg):
@@ -22,17 +24,17 @@ class DeepGAT(nn.Module):
         self.mid_lins = nn.ModuleList()
         
         if cfg['norm'] == 'LayerNorm':
-            self.in_norm = nn.LayerNorm(self.n_hid_list[0] * cfg['n_head'])
+            if cfg["num_layer"] != 1: self.in_norm = nn.LayerNorm(self.n_hid_list[0] * cfg['n_head'])
             for n_layer in range(1,cfg["num_layer"]-1):
                 self.mid_norms.append(nn.LayerNorm(self.n_hid_list[n_layer] * cfg['n_head']))
             self.out_norm = nn.LayerNorm(cfg['n_class'])
         elif cfg['norm'] == 'BatchNorm1d':
-            self.in_norm = nn.BatchNorm1d(self.n_hid_list[0] * cfg['n_head'])
+            if cfg["num_layer"] != 1: self.in_norm = nn.BatchNorm1d(self.n_hid_list[0] * cfg['n_head'])
             for n_layer in range(1,cfg["num_layer"]-1):
                 self.mid_norms.append(nn.BatchNorm1d(self.n_hid_list[n_layer] * cfg['n_head']))
             self.out_norm = nn.BatchNorm1d(cfg['n_class'])
         else:
-            self.in_norm = nn.Identity()
+            if cfg["num_layer"] != 1: self.in_norm = nn.Identity()
             for _ in range(1,cfg["num_layer"]-1):
                 self.mid_norms.append(nn.Identity())
             self.out_norm = nn.Identity()
@@ -111,17 +113,6 @@ class DeepGAT(nn.Module):
         x = x.view(-1,self.cfg['n_head']*(self.n_hid_list[n_layer-1]+self.cfg['n_class']))
         return x
         
-    # def dim_reduction_per_l(self,n_layer):
-    #     return int(self.cfg['n_hid'] - ((self.cfg['n_hid'] - self.cfg["n_class"]) / (self.cfg["num_layer"] -2) * n_layer))
-    
-    # def get_n_hid_list(self):
-    #     n_hid_list = [self.cfg['n_hid']]        
-    #     for n_layer in range(1,self.cfg["num_layer"]-1):
-    #         n_hid = self.dim_reduction_per_l(n_layer=n_layer)
-    #         n_hid_list.append(n_hid)
-
-    #     return n_hid_list
-
     def get_v_attention(self, edge_index,num_nodes,att):
         edge_index, _ = remove_self_loops(edge_index)
         edge_index, _ = add_self_loops(edge_index, num_nodes=num_nodes)  # [2, E]
@@ -141,39 +132,28 @@ class DeepGAT(nn.Module):
                 self.mid_convs[i].get_oracle_attention(self.cfg['n_head'],edge_index,y,self.cfg["gpu_id"],with_self_loops)
             self.outconv.get_oracle_attention(self.cfg['n_head_last'],edge_index,y,self.cfg["gpu_id"],with_self_loops)
             
-    def set_l_hops_rm_diag_row_normalized_adj(self,edge_index,num_nodes,with_self_loops=True):
-        def rm_diag(matrix):
-            matrix = matrix.clone()
-            diag_indices = torch.arange(matrix.size(0))
-            matrix[diag_indices, diag_indices] = 0
-            return matrix
-        def get_row_normalize_adj(adj):
-            row_sum = adj.sum(dim=1) 
-            row_sum[row_sum == 0] = 1  # avoid division by zero
-            row_normalized_adj = adj / row_sum.view(-1, 1)
-            return row_normalized_adj
-            
+    def set_l_hops_rm_diag_row_normalized_adj(self,edge_index,num_nodes,with_self_loops=True):            
         device = torch.device(f'cuda:{self.cfg.gpu_id}' if torch.cuda.is_available() else 'cpu')
-        
+       
         # Add self-loops and sort by index
         if with_self_loops:
             edge_index, _ = remove_self_loops(edge_index)
             edge_index, _ = add_self_loops(edge_index, num_nodes=num_nodes)  # [2, E + N]
-        
-        # calc adj_matrix
-        adj = torch.zeros(num_nodes,num_nodes).to(device)
-        for i in range(len(edge_index[0])):
-            adj[edge_index[0][i]][edge_index[1][i]] = 1
-        adj = adj.float()
-        
-        #get row normarized adj
-        row_normalized_adj = get_row_normalize_adj(adj)
-    
-        row_normalized_adjs = [row_normalized_adj ** (n_layer) for n_layer in range(1,int(self.cfg['num_layer']))]
-        row_normalized_adjs.insert(0,torch.eye(num_nodes).float().to(device))
-        
-        self.rm_diag_row_normalized_adjs = [rm_diag(adj) for adj in row_normalized_adjs]
-        
+           
+        adj = SparseTensor(row=edge_index[0],col=edge_index[1],sparse_sizes=(num_nodes,num_nodes))
+        adj.storage._value = None
+        adj.storage._value = torch.ones(adj.nnz()).to(device=device) / adj.sum(dim=-1)[adj.storage.row()]
+       
+        identity_matrix = SparseTensor(row=edge_index[0],col=edge_index[1],sparse_sizes=(num_nodes,num_nodes))
+        identity_matrix.storage._value = None
+        identity_matrix.storage._value = torch.ones(identity_matrix.nnz()).to(device=device)
+       
+        adjs = [identity_matrix,adj]
+        for n_layer in range(1,self.cfg["num_layer"]-1):
+            tmp_adj = adjs[n_layer].matmul(adj)
+            adjs.append(tmp_adj)
+        rm_diag_row_normalized_adjs = [remove_diag(adj) for adj in adjs]
+        self.rm_diag_row_normalized_adjs = rm_diag_row_normalized_adjs
     
 
 

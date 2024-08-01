@@ -35,7 +35,7 @@ PubMed: &PubMed
 
 # -------datasets (Coauthor)-------
 Coauthor: &Coauthor
- task: transductive
+ task: Transductive
  transform: None
  pre_transform: None
  run: 10 
@@ -388,41 +388,41 @@ DeepGAT_CANDAR_pubmed_tuned: &DeepGAT_CANDAR_pubmed_tuned
 DeepGAT_CANDAR_cs_tuned: &DeepGAT_CANDAR_cs_tuned
  <<: [*CS,*GAT]
  att_type: YSD
- dropout: 0.4
+ dropout: 0.6
  learing_late: 0.05
  model: DeepGAT
- n_hid: 16
+ n_hid: 8
  norm: LayerNorm
- weight_decay: 0.0001
+ weight_decay: 0.001
  delta: 0.4
  label_feat: True 
  path: cs_checkpoint.pt
 
-# DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
-#  <<: [*Physics,*GAT]
-#  att_type: YSD
-#  dropout: 
-#  learing_late: 
-#  model: DeepGAT
-#  n_hid: 
-#  norm: 
-#  weight_decay:
-#  delta:
-#  label_feat: True 
-#  path: physics_checkpoint.pt
+DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
+ <<: [*Physics,*GAT]
+ att_type: YDP
+ dropout: 0.0
+ learing_late: 0.05
+ model: DeepGAT
+ n_hid: 16
+ norm: LayerNorm
+ weight_decay: 0.001
+ delta: 0.6
+ label_feat: True 
+ path: physics_checkpoint.pt
 
-# DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
-#  <<: [*Flickr,*GAT]
-#  att_type: YSD
-#  dropout: 
-#  learing_late: 
-#  model: DeepGAT
-#  n_hid: 
-#  norm: 
-#  weight_decay:
-#  delta:
-#  label_feat: True 
-#  path: flickr_checkpoint.pt
+DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
+ <<: [*Flickr,*GAT]
+ att_type: YSD
+ dropout: 0.2
+ learing_late: 0.01
+ model: DeepGAT
+ n_hid: 64
+ norm: LayerNorm
+ weight_decay: 0.0001
+ delta: 0.4
+ label_feat: True 
+ path: flickr_checkpoint.pt
 
 # DeepGAT_CANDAR_ppi_tuned: &DeepGAT_CANDAR_ppi_tuned
 #  <<: [*PPI,*GAT]
@@ -437,19 +437,32 @@ DeepGAT_CANDAR_cs_tuned: &DeepGAT_CANDAR_cs_tuned
 #  label_feat: True 
 #  path: ppi_checkpoint.pt
 
+# DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
+#  <<: [*Physics,*GAT]
+#  att_type: YDP
+#  dropout: 0.2
+#  learing_late: 0.05
+#  model: DeepGAT
+#  n_hid: 16
+#  norm: LayerNorm
+#  weight_decay: 0.0001
+#  delta: 0.8
+#  label_feat: True 
+#  path: physics_checkpoint.pt
 
 
 
 #debag
 debag:
- <<: *GAT_physics
+ <<: *GAT_Flickr
  model: DeepGAT
  att_type: YDP
  oracle_attention: False
  delta: 0.2
  label_feat: True
  n_hid: 16
- num_layer: 2
+ num_layer: 15
+ gpu_id: 2
  epochs: 200
  run: 1
 
@@ -463,4 +476,4 @@ hydra:
       _target_: optuna.samplers.TPESampler
     direction: maximize
     n_jobs: 1
-    n_trials: 50
+    n_trials: 100
