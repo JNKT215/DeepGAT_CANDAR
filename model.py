@@ -17,7 +17,7 @@ class DeepGAT(nn.Module):
         self.cfg = cfg
         self.n_feat = cfg['n_feat'] +cfg['n_class']  if self.cfg['label_feat'] else cfg['n_feat']
         self.n_hid_list = [cfg['n_hid'] for _ in range(self.cfg["num_layer"]-1)]
-        self.n_hid_multiple_n_head_list = [(n_hid+ cfg['n_class']) * cfg['n_head']  for n_hid in self.n_hid_list] if self.cfg['label_feat'] else [n_hid * cfg['n_head'] for n_hid in self.n_hid_list]
+        self.n_hid_multiple_n_head_list = [(n_hid+ cfg['n_class']) * cfg['n_head'] if n_layer < self.cfg["use_label_feat_num_layer"] else n_hid * cfg['n_head'] for n_layer,n_hid in enumerate(self.n_hid_list,1)] if self.cfg['label_feat'] else [n_hid * cfg['n_head'] for n_hid in self.n_hid_list]
         self.rm_diag_row_normalized_adjs = None
         self.mid_norms = nn.ModuleList()
         self.mid_convs = nn.ModuleList()
@@ -74,13 +74,13 @@ class DeepGAT(nn.Module):
                 hs.append(self.inconv.h)
                 x = F.elu(x)
             for n_layer,(mid_conv,mid_norm) in enumerate(zip(self.mid_convs,self.mid_norms),1):
-                if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=n_layer)
+                if self.cfg['label_feat'] and n_layer < self.cfg["use_label_feat_num_layer"]: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=n_layer)
                 x = F.dropout(x, p=self.dropout, training=self.training)
                 x = mid_conv(x, edge_index)
                 x = mid_norm(x)
                 hs.append(mid_conv.h)
                 x = F.elu(x)
-            if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=self.cfg['num_layer']-1) # L-layer
+            if self.cfg['label_feat'] and self.cfg['num_layer']-1 < self.cfg["use_label_feat_num_layer"]: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=self.cfg['num_layer']-1) # L-layer
             x = F.dropout(x, p=self.dropout, training=self.training)
             x = self.outconv(x,edge_index)
             x = self.out_norm(x)
@@ -162,7 +162,7 @@ class DeepGAT(nn.Module):
             identity_matrix = identity_matrix.to("cpu")
         
         adjs = [identity_matrix,adj]
-        for n_layer in range(1,self.cfg["num_layer"]-1):
+        for n_layer in range(1,self.cfg["use_label_feat_num_layer"]-1):
             tmp_adj = adjs[n_layer].matmul(adj)
             adjs.append(tmp_adj)
         rm_diag_row_normalized_adjs = [remove_diag(adj) for adj in adjs]

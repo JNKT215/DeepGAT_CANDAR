@@ -101,6 +101,7 @@ GAT: &GAT
   delta: 0.2
   gpu_id: 0
   use_cpu: False
+  use_label_feat_num_layer: 3
 
 
 # -------model instance + dataset-------
@@ -418,10 +419,10 @@ DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
  dropout: 0.2
  learing_late: 0.01
  model: DeepGAT
- n_hid: 64
- norm: LayerNorm
+ n_hid: 16
+ norm: BatchNorm1d
  weight_decay: 0.0001
- delta: 0.4
+ delta: 0.6
  label_feat: True 
  path: flickr_checkpoint.pt
 
@@ -451,11 +452,24 @@ DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
 #  label_feat: True 
 #  path: physics_checkpoint.pt
 
+# DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
+#  <<: [*Flickr,*GAT]
+#  att_type: YSD
+#  dropout: 0.2
+#  learing_late: 0.01
+#  model: DeepGAT
+#  n_hid: 64
+#  norm: LayerNorm
+#  weight_decay: 0.0001
+#  delta: 0.4
+#  label_feat: True 
+#  path: flickr_checkpoint.pt
+
 
 
 #debag
 debag:
- <<: *GAT_Flickr
+ <<: *GAT_cora
  model: DeepGAT
  att_type: YDP
  oracle_attention: False
@@ -465,7 +479,8 @@ debag:
  num_layer: 3
  gpu_id: 0
  epochs: 200
- use_cpu: True
+ use_cpu: False
+ use_label_feat_num_layer: 3
  run: 1
 
 
