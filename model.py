@@ -87,18 +87,15 @@ class DeepGAT(nn.Module):
             hs.append(self.outconv.h)
         elif self.cfg['task'] == 'Inductive':
             if self.cfg["num_layer"] !=1:
-                if self.cfg['label_feat']: self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=0)
                 x = self.inconv(x, edge_index) + self.in_lin(x)
                 x = self.in_norm(x)
                 hs.append(self.inconv.h)
                 x = F.elu(x)
             for n_layer,(mid_conv,mid_lin,mid_norm) in enumerate(zip(self.mid_convs,self.mid_lins,self.mid_norms),1):
-                if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=n_layer)
                 x = mid_conv(x, edge_index) + mid_lin(x)
                 x = mid_norm(x)
                 hs.append(mid_conv.h)
                 x = F.elu(x)          
-            if self.cfg['label_feat']: x = self.cat_x_and_y_feat(x=x,y_feats=y_feats,n_layer=self.cfg['num_layer']-1) # L-layer
             x = self.outconv(x, edge_index) + self.out_lin(x)
             x = self.out_norm(x)
             hs.append(self.outconv.h)
