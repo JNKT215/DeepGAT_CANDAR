@@ -80,7 +80,6 @@ PPI: &PPI
 
 
 # -------model instance-------
-
 GAT: &GAT
   n_head: 8
   n_head_last: 1
@@ -192,7 +191,6 @@ GAT_physics_tuned_SD: &GAT_physics_tuned_SD
  weight_decay: 0.001
  path: physics_checkpoint.pt
 
-
 GAT_Flickr_tuned_DP: &GAT_Flickr_tuned_DP
   <<: [*Flickr,*GAT]
   att_type: DP
@@ -244,120 +242,17 @@ GAT_ppi_tuned_SD: &GAT_ppi_tuned_SD
  path: ppi_checkpoint.pt
 
 # -------model instance (our study)-------
-# DeepGAT updated Tuned hyper parameters
-
-#cs
-DeepGAT_cs_tuned_YDP_supervised_updated: &DeepGAT_cs_tuned_YDP_supervised_updated
- <<: [*CS,*GAT]
- att_type: YDP
- dropout: 0.8
- learing_late: 0.05
- model: DeepGAT
- n_hid: 15
- norm: LayerNorm
- weight_decay: 0.0001
- path: cs_checkpoint.pt
-
-DeepGAT_cs_tuned_YSD_supervised_updated: &DeepGAT_cs_tuned_YSD_supervised_updated
- <<: [*CS,*GAT]
- att_type: YSD
- dropout: 0.8
- learing_late: 0.05
- model: DeepGAT
- n_hid: 15
- norm: LayerNorm
- weight_decay: 0.0005
- path: cs_checkpoint.pt
-
-
-#physics
-DeepGAT_physics_tuned_YDP_supervised_updated: &DeepGAT_physics_tuned_YDP_supervised_updated
- <<: [*Physics,*GAT]
- att_type: YDP
- dropout: 0.8
- learing_late: 0.05
- model: DeepGAT
- n_hid: 5
- norm:  LayerNorm
- weight_decay: 0
- path: physics_checkpoint.pt
-
-DeepGAT_physics_tuned_YSD_supervised_updated: &DeepGAT_physics_tuned_YSD_supervised_updated
- <<: [*Physics,*GAT]
- att_type: YSD
- dropout:  0.6
- learing_late: 0.001
- model: DeepGAT
- n_hid: 5
- norm: None
- weight_decay:  0
- path: physics_checkpoint.pt
-
-#Flickr
-DeepGAT_Flickr_tuned_YDP_supervised_updated: &DeepGAT_Flickr_tuned_YDP_supervised_updated
- <<: [*Flickr,*GAT]
- att_type: YDP
- dropout: 0.0
- learing_late: 0.01
- model: DeepGAT
- n_hid: 7
- norm: BatchNorm1d
- weight_decay: 0
- path: flickr_checkpoint.pt
-  
-DeepGAT_Flickr_tuned_YSD_supervised_updated: &DeepGAT_Flickr_tuned_YSD_supervised_updated
- <<: [*Flickr,*GAT]
- att_type: YSD
- dropout: 0.0
- learing_late: 0.005
- model: DeepGAT
- n_hid: 7
- norm: BatchNorm1d
- weight_decay: 0
- path: flickr_checkpoint.pt
-
-#ppi
-DeepGAT_ppi_tuned_YDP_supervised_updated: &DeepGAT_ppi_tuned_YDP_supervised_updated
- <<: [*PPI,*GAT]
- n_head: 4
- n_head_last: 6
- att_type: YDP
- dropout: 0.8
- learing_late: 0.001  
- model: DeepGAT
- n_hid: 121
- norm: None
- weight_decay: 0
- class_num: Multi
- path: ppi_checkpoint.pt
-
-DeepGAT_ppi_tuned_YSD_supervised_updated: &DeepGAT_ppi_tuned_YSD_supervised_updated
- <<: [*PPI,*GAT]
- n_head: 4
- n_head_last: 6
- att_type: YSD
- dropout: 0.2
- learing_late: 0.001  
- model: DeepGAT
- n_hid: 121
- norm: LayerNorm
- weight_decay: 0.001
- class_num: Multi
- path: ppi_checkpoint.pt
-
-
-# -------model instance (our study)-------
 # DeepGAT_CANDAR updated Tuned hyper parameters
 DeepGAT_CANDAR_cora_tuned: &DeepGAT_CANDAR_cora_tuned
  <<: [*Cora,*GAT]
  att_type: YSD
- dropout: 0.6
- learing_late: 0.05
+ dropout: 0.8
+ learing_late: 0.005
  model: DeepGAT
- n_hid: 16
- norm: LayerNorm
- weight_decay: 0.0005
- delta: 0.4
+ n_hid: 64
+ norm: None
+ weight_decay: 0.0001
+ delta: 0.6
  label_feat: True 
  path: cora_checkpoint.pt
 
@@ -387,7 +282,20 @@ DeepGAT_CANDAR_pubmed_tuned: &DeepGAT_CANDAR_pubmed_tuned
  label_feat: True 
  path: pubmed_checkpoint.pt
 
-DeepGAT_CANDAR_cs_tuned: &DeepGAT_CANDAR_cs_tuned
+DeepGAT_CANDAR_cs_tuned_YDP: &DeepGAT_CANDAR_cs_tuned_YDP
+ <<: [*CS,*GAT]
+ att_type: YDP
+ dropout: 0.6
+ learing_late: 0.05 
+ model: DeepGAT
+ n_hid: 8
+ norm: LayerNorm
+ weight_decay: 0
+ delta: 0.4
+ label_feat: True 
+ path: cs_checkpoint.pt
+
+DeepGAT_CANDAR_cs_tuned_YSD: &DeepGAT_CANDAR_cs_tuned_YSD
  <<: [*CS,*GAT]
  att_type: YSD
  dropout: 0.6
@@ -400,7 +308,7 @@ DeepGAT_CANDAR_cs_tuned: &DeepGAT_CANDAR_cs_tuned
  label_feat: True 
  path: cs_checkpoint.pt
 
-DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
+DeepGAT_CANDAR_physics_tuned_YDP: &DeepGAT_CANDAR_physics_tuned_YDP
  <<: [*Physics,*GAT]
  att_type: YDP
  dropout: 0.0
@@ -413,7 +321,33 @@ DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
  label_feat: True 
  path: physics_checkpoint.pt
 
-DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
+DeepGAT_CANDAR_physics_tuned_YSD: &DeepGAT_CANDAR_physics_tuned_YSD
+ <<: [*Physics,*GAT]
+ att_type: YSD
+ dropout: 0.6
+ learing_late: 0.05 
+ model: DeepGAT
+ n_hid: 8
+ norm: LayerNorm
+ weight_decay: 0
+ delta: 0.2
+ label_feat: True 
+ path: physics_checkpoint.pt
+
+DeepGAT_CANDAR_flickr_tuned_YDP: &DeepGAT_CANDAR_flickr_tuned_YDP
+ <<: [*Flickr,*GAT]
+ att_type: YDP
+ dropout: 0.0
+ learing_late: 0.001
+ model: DeepGAT
+ n_hid: 32
+ norm: LayerNorm
+ weight_decay: 0
+ delta: 0.4
+ label_feat: True 
+ path: flickr_checkpoint.pt
+
+DeepGAT_CANDAR_flickr_tuned_YSD: &DeepGAT_CANDAR_flickr_tuned_YSD
  <<: [*Flickr,*GAT]
  att_type: YSD
  dropout: 0.2
@@ -426,44 +360,32 @@ DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
  label_feat: True 
  path: flickr_checkpoint.pt
 
-# DeepGAT_CANDAR_ppi_tuned: &DeepGAT_CANDAR_ppi_tuned
+# DeepGAT_CANDAR_ppi_tuned_YDP: &DeepGAT_CANDAR_ppi_tuned_YDP
 #  <<: [*PPI,*GAT]
-#  att_type: YSD
+#  att_type: YDP
 #  dropout: 
 #  learing_late: 
 #  model: DeepGAT
 #  n_hid: 
 #  norm: 
-#  weight_decay:
-#  delta:
-#  label_feat: True 
+#  weight_decay: 
+#  delta: 
+#  label_feat: False 
 #  path: ppi_checkpoint.pt
 
-# DeepGAT_CANDAR_physics_tuned: &DeepGAT_CANDAR_physics_tuned
-#  <<: [*Physics,*GAT]
-#  att_type: YDP
-#  dropout: 0.2
-#  learing_late: 0.05
+# DeepGAT_CANDAR_ppi_tuned_YSD: &DeepGAT_CANDAR_ppi_tuned_YSD
+#  <<: [*PPI,*GAT]
+#  att_type: YSD 
+#  dropout: 
+#  learing_late: 
 #  model: DeepGAT
-#  n_hid: 16
-#  norm: LayerNorm
-#  weight_decay: 0.0001
-#  delta: 0.8
-#  label_feat: True 
-#  path: physics_checkpoint.pt
+#  n_hid: 
+#  norm: 
+#  weight_decay: 
+#  delta: 
+#  label_feat: False 
+#  path: ppi_checkpoint.pt
 
-# DeepGAT_CANDAR_flickr_tuned: &DeepGAT_CANDAR_flickr_tuned
-#  <<: [*Flickr,*GAT]
-#  att_type: YSD
-#  dropout: 0.2
-#  learing_late: 0.01
-#  model: DeepGAT
-#  n_hid: 64
-#  norm: LayerNorm
-#  weight_decay: 0.0001
-#  delta: 0.4
-#  label_feat: True 
-#  path: flickr_checkpoint.pt
 
 
 

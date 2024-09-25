@@ -26,8 +26,8 @@ def visualize_attention_kldiv(kl_divs,save_dir,output_name,outlier):
     ax.set_xticklabels(names)
     # ax.set_ylabel("KLD(Att_l=2,Att_l=9)")
     plt.tick_params(labelsize=18)
-    plt.ylim([-0.1,3.1])
-    ax.set_yticks([0,1,2,3])
+    plt.ylim([-0.01,0.16])
+    ax.set_yticks([0,0.05,0.10,0.15])
     plt.savefig(f'{save_dir}{output_name}.png')
 
 def load_attention(args):
@@ -44,6 +44,7 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, default='None')
+    parser.add_argument('--att_type', type=str, default='None')
     parser.add_argument('--DeepGAT_L2_att', type=str, default='None')
     parser.add_argument('--DeepGAT_max_L_att', type=str, default='None')
     parser.add_argument('--GAT_L2_att', type=str, default='None')
@@ -57,8 +58,8 @@ if __name__ == "__main__":
     
     
     kl_divs = {}
-    kl_divs["DeepGAT (DP)"] = calc_v_attention_kldiv(DeepGAT_L2_Attention,DeepGAT_max_L_Attention)
-    kl_divs["GAT (DP)"]     = calc_v_attention_kldiv(GAT_L2_Attention,GAT_max_L_Attention)
+    kl_divs[f"DeepGAT ({args.att_type[1:]})"] = calc_v_attention_kldiv(DeepGAT_L2_Attention,DeepGAT_max_L_Attention)
+    kl_divs[f"GAT ({args.att_type[1:]})"]     = calc_v_attention_kldiv(GAT_L2_Attention,GAT_max_L_Attention)
     print(f"dataset:{args.name}")
     visualize_attention_kldiv(kl_divs,save_dir,args.output_name,args.outlier)
     
