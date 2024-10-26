@@ -360,31 +360,31 @@ DeepGAT_CANDAR_flickr_tuned_YSD: &DeepGAT_CANDAR_flickr_tuned_YSD
  label_feat: True 
  path: flickr_checkpoint.pt
 
-# DeepGAT_CANDAR_ppi_tuned_YDP: &DeepGAT_CANDAR_ppi_tuned_YDP
-#  <<: [*PPI,*GAT]
-#  att_type: YDP
-#  dropout: 
-#  learing_late: 
-#  model: DeepGAT
-#  n_hid: 
-#  norm: 
-#  weight_decay: 
-#  delta: 
-#  label_feat: False 
-#  path: ppi_checkpoint.pt
+DeepGAT_CANDAR_ppi_tuned_YDP: &DeepGAT_CANDAR_ppi_tuned_YDP
+ <<: [*PPI,*GAT]
+ att_type: YDP
+ dropout: 0.4
+ learing_late: 0.001 
+ model: DeepGAT
+ n_hid: 32
+ norm: LayerNorm
+ weight_decay: 0.001
+ delta: 0.6
+ label_feat: False 
+ path: ppi_checkpoint.pt
 
-# DeepGAT_CANDAR_ppi_tuned_YSD: &DeepGAT_CANDAR_ppi_tuned_YSD
-#  <<: [*PPI,*GAT]
-#  att_type: YSD 
-#  dropout: 
-#  learing_late: 
-#  model: DeepGAT
-#  n_hid: 
-#  norm: 
-#  weight_decay: 
-#  delta: 
-#  label_feat: False 
-#  path: ppi_checkpoint.pt
+DeepGAT_CANDAR_ppi_tuned_YSD: &DeepGAT_CANDAR_ppi_tuned_YSD
+ <<: [*PPI,*GAT]
+ att_type: YSD 
+ dropout: 0.6
+ learing_late: 0.005
+ model: DeepGAT
+ n_hid: 32
+ norm: BatchNorm1d
+ weight_decay: 0.0005
+ delta: 0.3
+ label_feat: False 
+ path: ppi_checkpoint.pt
 
 
 
