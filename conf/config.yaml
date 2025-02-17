@@ -243,45 +243,6 @@ GAT_ppi_tuned_SD: &GAT_ppi_tuned_SD
 
 # -------model instance (our study)-------
 # DeepGAT_CANDAR updated Tuned hyper parameters
-DeepGAT_CANDAR_cora_tuned: &DeepGAT_CANDAR_cora_tuned
- <<: [*Cora,*GAT]
- att_type: YSD
- dropout: 0.8
- learing_late: 0.005
- model: DeepGAT
- n_hid: 64
- norm: None
- weight_decay: 0.0001
- delta: 0.6
- label_feat: True 
- path: cora_checkpoint.pt
-
-DeepGAT_CANDAR_citeseer_tuned: &DeepGAT_CANDAR_citeseer_tuned
- <<: [*Citeseer,*GAT]
- att_type: YSD
- dropout: 0.4
- learing_late: 0.01
- model: DeepGAT
- n_hid: 16
- norm: None
- weight_decay: 0.001
- delta: 0.4
- label_feat: True 
- path: citeseer_checkpoint.pt
-
-DeepGAT_CANDAR_pubmed_tuned: &DeepGAT_CANDAR_pubmed_tuned
- <<: [*PubMed,*GAT]
- att_type: YSD
- dropout: 0.4
- learing_late: 0.001
- model: DeepGAT
- n_hid: 64
- norm: None
- weight_decay: 0.0001
- delta: 0.6
- label_feat: True 
- path: pubmed_checkpoint.pt
-
 DeepGAT_CANDAR_cs_tuned_YDP: &DeepGAT_CANDAR_cs_tuned_YDP
  <<: [*CS,*GAT]
  att_type: YDP
@@ -391,7 +352,7 @@ DeepGAT_CANDAR_ppi_tuned_YSD: &DeepGAT_CANDAR_ppi_tuned_YSD
 
 #debag
 debag:
- <<: *GAT_cora
+ <<: *GAT_cs
  model: DeepGAT
  att_type: YDP
  oracle_attention: False
